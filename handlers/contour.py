@@ -1,10 +1,4 @@
-from aiogram import F
-
-@router.message(
-    ContourState.direction,
-    F.text.in_(["➡️ Попутное", "⬅️ Встречное"])
-)
-async def contour_direction(message: Message, state: FSMContext):
+from aiogram import Router, F
 from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 
@@ -13,19 +7,18 @@ from states import ContourState
 from keyboards.contour import contour_keyboard
 from keyboards.materials import materials_keyboard
 from keyboards.milling_tools import milling_tools_keyboard
+from keyboards.allowance import allowance_keyboard
+from keyboards.direction import direction_keyboard
+from keyboards.main_menu import main_menu
 
 from services.material_service import get_modes
-from services.cutting import spindle_speed, feed_rate
 from services.contour import (
     contour_feed,
     contour_passes,
     contour_time,
-    contour_gcode,
 )
+from services.contour_gcode import contour_gcode
 
-from keyboards.direction import direction_keyboard
-from keyboards.allowance import allowance_keyboard
-from keyboards.main_menu import main_menu
 router = Router()
 
 
@@ -37,7 +30,7 @@ async def contour_start(message: Message, state: FSMContext):
     await state.set_state(ContourState.type)
 
     await message.answer(
-        "Выберите тип обработки",
+        "⭕ Выберите тип контура",
         reply_markup=contour_keyboard,
     )
 
@@ -45,18 +38,20 @@ async def contour_start(message: Message, state: FSMContext):
 @router.message(ContourState.type)
 async def contour_type(message: Message, state: FSMContext):
 
-    side = message.text
-
-    if side not in ["⬜ Наружный", "🔲 Внутренний"]:
+    if message.text not in ("⬜ Наружный", "🔲 Внутренний"):
         await message.answer(
             "Выберите вариант кнопкой.",
             reply_markup=contour_keyboard,
         )
         return
 
-    await state.update_data(side=side)
+    await state.update_data(
+        side=message.text
+    )
 
-    await state.set_state(ContourState.material)
+    await state.set_state(
+        ContourState.material
+    )
 
     await message.answer(
         "Выберите материал",
@@ -76,7 +71,7 @@ async def contour_material(message: Message, state: FSMContext):
     )
 
     await message.answer(
-        "Выберите тип фрезы",
+        "Выберите инструмент",
         reply_markup=milling_tools_keyboard,
     )
 
@@ -84,16 +79,9 @@ async def contour_material(message: Message, state: FSMContext):
 @router.message(ContourState.tool)
 async def contour_tool(message: Message, state: FSMContext):
 
-    tool = message.text
-
-    if tool not in ["Твердосплавная", "HSS"]:
-        await message.answer(
-            "Выберите инструмент кнопкой.",
-            reply_markup=milling_tools_keyboard,
-        )
-        return
-
-    await state.update_data(tool=tool)
+    await state.update_data(
+        tool=message.text
+    )
 
     await state.set_state(
         ContourState.diameter
@@ -134,7 +122,7 @@ async def contour_teeth(message: Message, state: FSMContext):
     await state.set_state(ContourState.length)
 
     await message.answer(
-        "Введите длину детали (мм):"
+        "Введите размер по X (мм):"
     )
 
 
@@ -152,7 +140,7 @@ async def contour_length(message: Message, state: FSMContext):
     await state.set_state(ContourState.width)
 
     await message.answer(
-        "Введите ширину детали (мм):"
+        "Введите размер по Y (мм):"
     )
 
 
@@ -170,7 +158,7 @@ async def contour_width(message: Message, state: FSMContext):
     await state.set_state(ContourState.depth)
 
     await message.answer(
-        "Введите глубину обработки (мм):"
+        "Введите глубину обработки Z (мм):"
     )
 
 
@@ -188,10 +176,8 @@ async def contour_depth(message: Message, state: FSMContext):
     await state.set_state(ContourState.step)
 
     await message.answer(
-        "Введите шаг по Z (мм):"
+        "Введите шаг по Z (Ap, мм):"
     )
-from keyboards.allowance import allowance_keyboard
-from keyboards.direction import direction_keyboard
 
 
 @router.message(ContourState.step)
@@ -210,8 +196,6 @@ async def contour_step(message: Message, state: FSMContext):
     await message.answer(
         "Введите обороты шпинделя S (об/мин):"
     )
-
-
 @router.message(ContourState.rpm)
 async def contour_rpm(message: Message, state: FSMContext):
 
@@ -255,14 +239,6 @@ async def contour_allowance(message: Message, state: FSMContext):
 async def contour_direction(message: Message, state: FSMContext):
 
     direction = message.text
-    
-    if direction == "⬅️ Назад":
-        await state.clear()
-        await message.answer(
-            "🏠 Главное меню",
-            reply_markup=main_menu,
-        )
-        return
 
     data = await state.get_data()
 
@@ -279,15 +255,10 @@ async def contour_direction(message: Message, state: FSMContext):
         await state.clear()
         return
 
-    vc = modes["vc"]
-    fz = modes["fz"]
-
-    rpm = data["rpm"]
-
     feed = contour_feed(
-        rpm,
+        data["rpm"],
         data["teeth"],
-        fz,
+        modes["fz"],
     )
 
     passes = contour_passes(
@@ -307,8 +278,9 @@ async def contour_direction(message: Message, state: FSMContext):
 
     gcode = contour_gcode(
         tool=1,
-        rpm=rpm,
+        rpm=data["rpm"],
         feed=feed,
+        diameter=data["diameter"],
         length=data["length"],
         width=data["width"],
         depth=data["depth"],
@@ -339,14 +311,14 @@ async def contour_direction(message: Message, state: FSMContext):
 Диаметр:
 Ø{data["diameter"]:.1f} мм
 
-Зубьев:
+Количество зубьев:
 {data["teeth"]}
 
 ────────────────
 
 Обороты
 
-S{rpm}
+S{data["rpm"]}
 
 Подача
 
@@ -374,7 +346,7 @@ F{feed}
 
 ────────────────
 
-Время
+Время обработки
 
 ≈ {time_sec} сек
 
