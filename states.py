@@ -25,6 +25,7 @@ class FaceState(StatesGroup):
     length = State()
     depth = State()
     rpm = State()
+    overlap = State()
     strategy = State()
 
 
