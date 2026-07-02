@@ -213,7 +213,7 @@ async def face_strategy(message: Message, state: FSMContext):
     depth=data["depth"],
     step=step,
 )
-    )
+    
 
     text = f"""
 🟦 ТОРЦЕВОЕ ФРЕЗЕРОВАНИЕ
