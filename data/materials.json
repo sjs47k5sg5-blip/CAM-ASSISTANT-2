@@ -1,44 +1,44 @@
 {
-  "Сталь 45": {
-    "Твердосплавная": {
-      "vc": 180,
-      "fz": 0.05,
-      "ap": 1.0,
-      "ae": 0.5
+  "machine": {
+    "name": "Victor Center 136",
+    "control": "Fanuc Oi-MF",
+
+    "spindle": {
+      "max_rpm": 15000,
+      "power_kw": 15,
+      "torque_nm": 95
     },
-    "HSS": {
-      "vc": 80,
-      "fz": 0.03,
-      "ap": 0.5,
-      "ae": 0.3
-    }
-  },
-  "D16": {
-    "Твердосплавная": {
-      "vc": 500,
-      "fz": 0.08,
-      "ap": 1.5,
-      "ae": 0.5
+
+    "axes": {
+      "x": 1350,
+      "y": 700,
+      "z": 610
     },
-    "HSS": {
-      "vc": 180,
-      "fz": 0.05,
-      "ap": 0.8,
-      "ae": 0.4
-    }
-  },
-  "Нержавейка 304": {
-    "Твердосплавная": {
-      "vc": 100,
-      "fz": 0.03,
-      "ap": 0.8,
-      "ae": 0.3
+
+    "rapid_feed": {
+      "x": 36000,
+      "y": 36000,
+      "z": 30000
     },
-    "HSS": {
-      "vc": 35,
-      "fz": 0.02,
-      "ap": 0.3,
-      "ae": 0.2
+
+    "feed": {
+      "max": 15000
+    },
+
+    "tool_system": {
+      "holder": "BT40",
+      "magazine": 30
+    },
+
+    "coolant": {
+      "flood": true,
+      "through_spindle": false
+    },
+
+    "default": {
+      "safe_z": 50,
+      "rapid_z": 5,
+      "clearance": 2
     }
   }
 }
