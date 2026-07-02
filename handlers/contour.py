@@ -10,7 +10,16 @@ from keyboards.milling_tools import milling_tools_keyboard
 
 from services.material_service import get_modes
 from services.cutting import spindle_speed, feed_rate
+from services.contour import (
+    contour_feed,
+    contour_passes,
+    contour_time,
+    contour_gcode,
+)
 
+from keyboards.direction import direction_keyboard
+from keyboards.allowance import allowance_keyboard
+from keyboards.main_menu import main_menu
 router = Router()
 
 
