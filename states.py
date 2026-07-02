@@ -34,12 +34,18 @@ class FaceState(StatesGroup):
 # ==========================
 
 class ContourState(StatesGroup):
+    type = State()          # Наружный / Внутренний
     material = State()
     tool = State()
     diameter = State()
+    teeth = State()
+    length = State()
+    width = State()
     depth = State()
     step = State()
     rpm = State()
+    allowance = State()
+    direction = State()
     side = State()
 
 
@@ -51,11 +57,13 @@ class PocketState(StatesGroup):
     material = State()
     tool = State()
     diameter = State()
+    teeth = State()
     length = State()
     width = State()
     depth = State()
     step = State()
     rpm = State()
+    overlap = State()
     strategy = State()
 
 
@@ -67,6 +75,7 @@ class SlotState(StatesGroup):
     material = State()
     tool = State()
     diameter = State()
+    teeth = State()
     length = State()
     depth = State()
     step = State()
