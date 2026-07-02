@@ -22,6 +22,7 @@ router = Router()
 @router.message(F.text == "🔩 Нарезание резьбы")
 async def thread_start(message: Message, state: FSMContext):
     await state.clear()
+
     await state.set_state(ThreadState.thread)
 
     await message.answer(
@@ -33,13 +34,21 @@ async def thread_start(message: Message, state: FSMContext):
 @router.message(ThreadState.thread)
 async def thread_selected(message: Message, state: FSMContext):
 
-    thread = message.text.upper()
+    thread = message.text.strip().upper()
+
+    if thread == "⬅️ НАЗАД":
+        await state.clear()
+        await message.answer(
+            "Главное меню",
+            reply_markup=main_menu,
+        )
+        return
 
     try:
         get_thread(thread)
     except KeyError:
         await message.answer(
-            "Выберите резьбу кнопками.",
+            "❌ Выберите резьбу кнопками.",
             reply_markup=thread_keyboard,
         )
         return
@@ -85,7 +94,15 @@ async def thread_rpm(message: Message, state: FSMContext):
     thread = data["thread"]
     depth = data["depth"]
 
-    info = get_thread(thread)
+    try:
+        info = get_thread(thread)
+    except KeyError:
+        await message.answer(
+            "❌ Не удалось найти выбранную резьбу.",
+            reply_markup=main_menu,
+        )
+        await state.clear()
+        return
 
     drill = info["drill"]
     pitch = info["pitch"]
@@ -123,7 +140,7 @@ async def thread_rpm(message: Message, state: FSMContext):
 
 ────────────────
 
-Обороты
+Обороты шпинделя
 
 S{rpm}
 
@@ -157,7 +174,7 @@ M29
 
     await message.answer_document(
         FSInputFile(filename),
-        caption=f"📄 G-код для резьбы {thread}"
+        caption=f"📄 G-код Fanuc ({thread})"
     )
 
     await state.clear()
