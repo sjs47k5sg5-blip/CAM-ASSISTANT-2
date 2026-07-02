@@ -152,15 +152,17 @@ async def drilling_depth(message: Message, state: FSMContext):
 Время
 
 ≈ {time_sec} сек
-text += f"""
 """
-──────────────
+
+text += f"""
+
+────────────────
 
 Пример G-кода Fanuc
 
 <pre>{gcode}</pre>
 """
 
-    await message.answer(text)
+await message.answer(text, parse_mode="HTML")
 
-    await state.clear()
+await state.clear()
