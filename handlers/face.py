@@ -217,7 +217,7 @@ async def face_overlap(message: Message, state: FSMContext):
         "Выберите стратегию обработки",
         reply_markup=face_strategy_keyboard,
     )  
- @router.message(FaceState.strategy)
+@router.message(FaceState.strategy)
 async def face_strategy(message: Message, state: FSMContext):
 
     strategy = message.text
