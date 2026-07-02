@@ -1,4 +1,10 @@
-from aiogram import Router, F
+from aiogram import F
+
+@router.message(
+    ContourState.direction,
+    F.text.in_(["➡️ Попутное", "⬅️ Встречное"])
+)
+async def contour_direction(message: Message, state: FSMContext):
 from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 
@@ -249,6 +255,13 @@ async def contour_allowance(message: Message, state: FSMContext):
 async def contour_direction(message: Message, state: FSMContext):
 
     direction = message.text
+    if direction == "⬅️ Назад":
+    await state.clear()
+    await message.answer(
+        "🏠 Главное меню",
+        reply_markup=main_menu,
+    )
+    return
 
     data = await state.get_data()
 
