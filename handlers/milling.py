@@ -6,6 +6,7 @@ from states import MillingState
 
 from keyboards.materials import materials_keyboard
 from keyboards.tools import tools_keyboard
+from keyboards.main_menu import main_menu
 
 from services.material_service import get_modes
 from services.cutting import spindle_speed, feed_rate
@@ -58,7 +59,6 @@ async def diameter_selected(message: Message, state: FSMContext):
 
     try:
         diameter = float(message.text.replace(",", "."))
-
     except ValueError:
         await message.answer("Введите число.")
         return
@@ -77,7 +77,6 @@ async def teeth_selected(message: Message, state: FSMContext):
 
     try:
         teeth = int(message.text)
-
     except ValueError:
         await message.answer("Введите целое число.")
         return
@@ -88,7 +87,15 @@ async def teeth_selected(message: Message, state: FSMContext):
     tool = data["tool"]
     diameter = data["diameter"]
 
-    modes = get_modes(material, tool)
+    try:
+        modes = get_modes(material, tool)
+    except KeyError:
+        await message.answer(
+            "❌ Для выбранного материала или инструмента нет режимов.",
+            reply_markup=main_menu
+        )
+        await state.clear()
+        return
 
     vc = modes["vc"]
     fz = modes["fz"]
@@ -100,7 +107,7 @@ async def teeth_selected(message: Message, state: FSMContext):
     feed = feed_rate(rpm, teeth, fz)
 
     await message.answer(
-f"""
+        f"""
 📐 РЕЖИМЫ РЕЗАНИЯ
 
 Материал:
@@ -121,17 +128,17 @@ Vc:
 {vc} м/мин
 
 Fz:
-{fz:.3f} мм
+{fz:.3f} мм/зуб
 
 ────────────────
 
-Обороты S
+Обороты шпинделя
 
-{rpm} об/мин
+S{rpm} об/мин
 
-Подача F
+Подача
 
-{feed} мм/мин
+F{feed} мм/мин
 
 ────────────────
 
@@ -142,7 +149,8 @@ Ap
 Ae
 
 {ae:.1f} мм
-"""
+""",
+        reply_markup=main_menu
     )
 
     await state.clear()

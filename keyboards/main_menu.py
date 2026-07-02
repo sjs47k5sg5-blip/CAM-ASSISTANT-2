@@ -2,16 +2,17 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="📐 Режимы резания")],
-        [KeyboardButton(text="🕳 Сверление")],
-        [KeyboardButton(text="🔩 Нарезание резьбы")],
-        [KeyboardButton(text="⚙️ Генерация G-кода")],
         [
-            KeyboardButton(text="🛠 Инструменты"),
-            KeyboardButton(text="📚 G/M-коды"),
+            KeyboardButton(text="📐 Фрезерование"),
+            KeyboardButton(text="🕳 Отверстия"),
         ],
-        [KeyboardButton(text="📊 Калькуляторы")],
-        [KeyboardButton(text="ℹ️ О программе")],
+        [
+            KeyboardButton(text="📚 Справочник"),
+            KeyboardButton(text="⚙️ Утилиты"),
+        ],
+        [
+            KeyboardButton(text="ℹ️ О программе"),
+        ],
     ],
     resize_keyboard=True,
     input_field_placeholder="Выберите раздел..."
