@@ -94,7 +94,7 @@ async def drilling_depth(message: Message, state: FSMContext):
     diameter = data["diameter"]
 
     try:
-    mode = get_mode(material, tool, diameter)
+        mode = get_mode(material, tool, diameter)
 except Exception as e:
     await message.answer(
         f"❌ Ошибка:\n{type(e).__name__}: {e}"
