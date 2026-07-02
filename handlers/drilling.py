@@ -95,28 +95,28 @@ async def drilling_depth(message: Message, state: FSMContext):
 
     try:
         mode = get_mode(material, tool, diameter)
-except Exception as e:
-    await message.answer(
-        f"❌ Ошибка:\n{type(e).__name__}: {e}"
-    )
-    await state.clear()
-    return
 
-    rpm = mode["rpm"]
-    feed = mode["feed"]
-    cycle = mode["cycle"]
-    step = mode["step"]
-    coolant = mode["coolant"]
+        rpm = mode["rpm"]
+        feed = mode["feed"]
+        cycle = mode["cycle"]
+        step = mode["step"]
+        coolant = mode["coolant"]
+
+    except Exception as e:
+        await message.answer(f"❌ Ошибка:\n{type(e).__name__}: {e}")
+        await state.clear()
+        return
 
     time_sec = drilling_time(depth, feed)
+
     gcode = drilling_gcode(
-    tool=1,
-    rpm=rpm,
-    feed=feed,
-    depth=depth,
-    cycle=cycle,
-    step=step,
-)
+        tool=1,
+        rpm=rpm,
+        feed=feed,
+        depth=depth,
+        cycle=cycle,
+        step=step,
+    )
 
     text = f"""
 🕳 СВЕРЛЕНИЕ
@@ -136,37 +136,28 @@ except Exception as e:
 ────────────────
 
 Обороты S
-
 {rpm} об/мин
 
 Подача F
-
 {feed} мм/мин
 
 ────────────────
 
 Цикл
-
 {cycle}
 
 Шаг вывода
-
 {step} мм
 
 ────────────────
 
 Охлаждение
-
 {coolant}
 
 ────────────────
 
 Время
-
 ≈ {time_sec} сек
-"""
-
-    text += f"""
 
 ────────────────
 
@@ -175,6 +166,5 @@ except Exception as e:
 <pre>{gcode}</pre>
 """
 
-    await message.answer(text,     parse_mode="HTML")
-
-    await state.clear() 
+    await message.answer(text, parse_mode="HTML")
+    await state.clear()
