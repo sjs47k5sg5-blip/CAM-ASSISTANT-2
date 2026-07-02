@@ -10,10 +10,14 @@ milling_keyboard = ReplyKeyboardMarkup(
         ],
         [
             KeyboardButton(text="⭕ Контур"),
+        ],
+        [
             KeyboardButton(text="⬜ Карман"),
         ],
         [
             KeyboardButton(text="📏 Паз"),
+        ],
+        [
             KeyboardButton(text="🌀 Винтовая интерполяция"),
         ],
         [
