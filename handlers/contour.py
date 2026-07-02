@@ -255,13 +255,14 @@ async def contour_allowance(message: Message, state: FSMContext):
 async def contour_direction(message: Message, state: FSMContext):
 
     direction = message.text
+    
     if direction == "⬅️ Назад":
-    await state.clear()
-    await message.answer(
-        "🏠 Главное меню",
-        reply_markup=main_menu,
-    )
-    return
+        await state.clear()
+        await message.answer(
+            "🏠 Главное меню",
+            reply_markup=main_menu,
+        )
+        return
 
     data = await state.get_data()
 
