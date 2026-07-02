@@ -154,7 +154,7 @@ async def drilling_depth(message: Message, state: FSMContext):
 ≈ {time_sec} сек
 """
 
-text += f"""
+    text += f"""
 
 ────────────────
 
@@ -163,6 +163,6 @@ text += f"""
 <pre>{gcode}</pre>
 """
 
-await message.answer(text, parse_mode="HTML")
+    await message.answer(text,     parse_mode="HTML")
 
-await state.clear() 
+    await state.clear() 
