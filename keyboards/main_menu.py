@@ -4,6 +4,7 @@ main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="📐 Режимы резания")],
         [KeyboardButton(text="🕳 Сверление")],
+        [KeyboardButton(text="🔩 Нарезание резьбы")],
         [KeyboardButton(text="⚙️ Генерация G-кода")],
         [
             KeyboardButton(text="🛠 Инструменты"),
@@ -13,4 +14,5 @@ main_menu = ReplyKeyboardMarkup(
         [KeyboardButton(text="ℹ️ О программе")],
     ],
     resize_keyboard=True,
+    input_field_placeholder="Выберите раздел..."
 )
