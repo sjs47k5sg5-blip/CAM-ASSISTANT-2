@@ -101,11 +101,23 @@ class HelixState(StatesGroup):
 # ==========================
 
 class DrillingState(StatesGroup):
+    hole_type = State()
+
     material = State()
+
     tool = State()
+
+    tool_number = State()
+
     diameter = State()
+
     depth = State()
 
+    work_offset = State()
+
+    r_plane = State()
+
+    coordinates = State()
 
 # ==========================
 # Нарезание резьбы
