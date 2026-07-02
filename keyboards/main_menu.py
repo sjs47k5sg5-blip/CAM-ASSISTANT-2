@@ -3,6 +3,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="📐 Режимы резания")],
+        [KeyboardButton(text="🕳 Сверление")],
         [KeyboardButton(text="⚙️ Генерация G-кода")],
         [
             KeyboardButton(text="🛠 Инструменты"),
