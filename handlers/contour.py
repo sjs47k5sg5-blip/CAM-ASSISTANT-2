@@ -280,7 +280,6 @@ async def contour_direction(message: Message, state: FSMContext):
         tool=1,
         rpm=data["rpm"],
         feed=feed,
-        diameter=data["diameter"],
         length=data["length"],
         width=data["width"],
         depth=data["depth"],
