@@ -1,3 +1,4 @@
+from keyboards.drilling_menu import drilling_menu_keyboard
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
@@ -14,6 +15,15 @@ from services.drilling import (
 )
 
 router = Router()
+@router.message(F.text == "🕳 Отверстия")
+async def drilling_menu(message: Message, state: FSMContext):
+
+    await state.clear()
+
+    await message.answer(
+        "🕳 Выберите раздел обработки отверстий",
+        reply_markup=drilling_menu_keyboard,
+    )
 from keyboards.main_menu import main_menu
 
 

@@ -1,3 +1,4 @@
+from keyboards.milling import milling_keyboard
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
@@ -12,6 +13,15 @@ from services.material_service import get_modes
 from services.cutting import spindle_speed, feed_rate
 
 router = Router()
+@router.message(F.text == "📐 Фрезерование")
+async def milling_menu(message: Message, state: FSMContext):
+
+    await state.clear()
+
+    await message.answer(
+        "📐 Выберите раздел фрезерования",
+        reply_markup=milling_keyboard,
+    )
 
 
 @router.message(F.text == "📐 Режимы резания")
