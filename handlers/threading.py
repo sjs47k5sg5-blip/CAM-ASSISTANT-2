@@ -1,42 +1,32 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 
 from states import ThreadState
 
 from services.threading import (
     get_thread,
-    spindle_speed,
     feed_rate,
     tapping_cycle,
     tapping_time,
 )
 
+from services.thread_gcode import threading_gcode
+
+from keyboards.threading import thread_keyboard
 from keyboards.main_menu import main_menu
 
 router = Router()
 
 
-THREADS = [
-    "M3",
-    "M4",
-    "M5",
-    "M6",
-    "M8",
-    "M10",
-    "M12",
-]
-
-
 @router.message(F.text == "🔩 Нарезание резьбы")
 async def thread_start(message: Message, state: FSMContext):
-
     await state.clear()
-
     await state.set_state(ThreadState.thread)
 
     await message.answer(
-        "Введите резьбу (например M6):"
+        "🔩 Выберите резьбу",
+        reply_markup=thread_keyboard,
     )
 
 
@@ -45,9 +35,12 @@ async def thread_selected(message: Message, state: FSMContext):
 
     thread = message.text.upper()
 
-    if thread not in THREADS:
+    try:
+        get_thread(thread)
+    except KeyError:
         await message.answer(
-            "Неизвестная резьба.\n\nНапример: M3 M4 M5 M6 M8 M10 M12"
+            "Выберите резьбу кнопками.",
+            reply_markup=thread_keyboard,
         )
         return
 
@@ -69,22 +62,51 @@ async def thread_depth(message: Message, state: FSMContext):
         await message.answer("Введите число.")
         return
 
+    await state.update_data(depth=depth)
+
+    await state.set_state(ThreadState.rpm)
+
+    await message.answer(
+        "Введите обороты шпинделя S (об/мин):"
+    )
+
+
+@router.message(ThreadState.rpm)
+async def thread_rpm(message: Message, state: FSMContext):
+
+    try:
+        rpm = int(message.text)
+    except ValueError:
+        await message.answer("Введите целое число.")
+        return
+
     data = await state.get_data()
 
     thread = data["thread"]
+    depth = data["depth"]
 
     info = get_thread(thread)
 
     drill = info["drill"]
     pitch = info["pitch"]
 
-    rpm = spindle_speed(thread)
-
     feed = feed_rate(rpm, pitch)
 
     cycle = tapping_cycle(True)
 
     time_sec = tapping_time(depth, feed)
+
+    gcode = threading_gcode(
+        tool=1,
+        rpm=rpm,
+        feed=feed,
+        depth=depth,
+    )
+
+    filename = f"THREAD_{thread}.nc"
+
+    with open(filename, "w", encoding="utf-8") as file:
+        file.write(gcode)
 
     await message.answer(
         f"""
@@ -94,10 +116,10 @@ async def thread_depth(message: Message, state: FSMContext):
 {thread}
 
 Диаметр сверления:
-Ø{drill}
+Ø{drill:.1f} мм
 
 Шаг:
-{pitch}
+{pitch:.2f} мм
 
 ────────────────
 
@@ -111,17 +133,31 @@ F{feed}
 
 ────────────────
 
-Цикл
+Команды Fanuc
+
+M29
 
 {cycle}
 
 ────────────────
 
-Время
+Время обработки
 
 ≈ {time_sec} сек
+
+────────────────
+
+Пример G-кода
+
+<pre>{gcode}</pre>
 """,
+        parse_mode="HTML",
         reply_markup=main_menu,
+    )
+
+    await message.answer_document(
+        FSInputFile(filename),
+        caption=f"📄 G-код для резьбы {thread}"
     )
 
     await state.clear()

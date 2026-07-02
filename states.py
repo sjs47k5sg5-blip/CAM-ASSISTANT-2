@@ -18,3 +18,4 @@ class DrillingState(StatesGroup):
 class ThreadState(StatesGroup):
     thread = State()
     depth = State()
+    rpm = State()
