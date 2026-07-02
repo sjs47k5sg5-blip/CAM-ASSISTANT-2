@@ -107,3 +107,6 @@ def spindle_load(feed: int):
         return "🟡 Средняя"
 
     return "🔴 Высокая"
+    
+    duckduckgo-search
+    

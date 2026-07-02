@@ -1,18 +1,16 @@
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
+from services.gcode import drilling_gcode
 
 from states import DrillingState
+
 from keyboards.materials import materials_keyboard
 from keyboards.drilling import drill_type_keyboard
 
 from services.drilling import (
-    spindle_speed,
-    feed_rate,
-    get_cutting_data,
-    drilling_cycle,
+    get_mode,
     drilling_time,
-    coolant,
 )
 
 router = Router()
@@ -43,7 +41,7 @@ async def drilling_material(message: Message, state: FSMContext):
 
 @router.message(DrillingState.tool)
 async def drilling_tool(message: Message, state: FSMContext):
-    if message.text not in ("HSS", "Твердосплавное"):
+    if message.text not in ["HSS", "Твердосплавное"]:
         await message.answer("Выберите тип сверла кнопкой.")
         return
 
@@ -84,41 +82,84 @@ async def drilling_depth(message: Message, state: FSMContext):
     diameter = data["diameter"]
 
     try:
-        vc, fn = get_cutting_data(material, tool, diameter)
-    except Exception as e:
-        await message.answer(f"Ошибка: {e}")
+        mode = get_mode(material, tool, diameter)
+    except Exception:
+        await message.answer(
+            "Для выбранного материала или диаметра нет режимов."
+        )
         await state.clear()
         return
 
-    rpm = spindle_speed(vc, diameter)
-    feed = feed_rate(rpm, fn)
+    rpm = mode["rpm"]
+    feed = mode["feed"]
+    cycle = mode["cycle"]
+    step = mode["step"]
+    coolant = mode["coolant"]
 
-    cycle, step = drilling_cycle(depth, diameter)
+    time_sec = drilling_time(depth, feed)
+    gcode = drilling_gcode(
+    tool=1,
+    rpm=rpm,
+    feed=feed,
+    depth=depth,
+    cycle=cycle,
+    step=step,
+)
 
-    time_sec = drilling_time(depth, 5, feed)
+    text = f"""
+🕳 СВЕРЛЕНИЕ
 
-    cool = coolant(material)
+Материал:
+{material}
 
-    text = (
-        f"🕳 СВЕРЛЕНИЕ\n\n"
-        f"Материал: {material}\n"
-        f"Тип сверла: {tool}\n"
-        f"Диаметр: Ø{diameter:.1f} мм\n"
-        f"Глубина: {depth:.1f} мм\n\n"
-        f"Vc: {vc} м/мин\n"
-        f"S: {rpm} об/мин\n"
-        f"fn: {fn:.2f} мм/об\n"
-        f"F: {feed} мм/мин\n\n"
-        f"Цикл: {cycle}\n"
-    )
+Тип сверла:
+{tool}
 
-    if cycle == "G83":
-        text += f"\nШаг вывода сверла: {step} мм\n"
+Диаметр:
+Ø{diameter:.1f} мм
 
-    text += (
-        f"\nОхлаждение: {cool}\n"
-        f"\nВремя: ≈ {time_sec} сек"
-    )
+Глубина:
+{depth:.1f} мм
+
+────────────────
+
+Обороты S
+
+{rpm} об/мин
+
+Подача F
+
+{feed} мм/мин
+
+────────────────
+
+Цикл
+
+{cycle}
+
+Шаг вывода
+
+{step} мм
+
+────────────────
+
+Охлаждение
+
+{coolant}
+
+────────────────
+
+Время
+
+≈ {time_sec} сек
+text += f"""
+"""
+──────────────
+
+Пример G-кода Fanuc
+
+<pre>{gcode}</pre>
+"""
 
     await message.answer(text)
 
