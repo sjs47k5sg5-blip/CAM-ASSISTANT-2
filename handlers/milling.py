@@ -3,6 +3,11 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
 from states import MillingState
+
+from keyboards.materials import materials_keyboard
+from keyboards.tools import tools_keyboard
+
+from services.material_service import get_modes
 from services.cutting import spindle_speed, feed_rate
 
 router = Router()
@@ -10,77 +15,134 @@ router = Router()
 
 @router.message(F.text == "📐 Режимы резания")
 async def milling_start(message: Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(MillingState.material)
+
+    await message.answer(
+        "📐 Выберите материал",
+        reply_markup=materials_keyboard
+    )
+
+
+@router.message(MillingState.material)
+async def material_selected(message: Message, state: FSMContext):
+
+    material = message.text
+
+    await state.update_data(material=material)
+
+    await state.set_state(MillingState.tool)
+
+    await message.answer(
+        "🛠 Выберите инструмент",
+        reply_markup=tools_keyboard
+    )
+
+
+@router.message(MillingState.tool)
+async def tool_selected(message: Message, state: FSMContext):
+
+    tool = message.text
+
+    await state.update_data(tool=tool)
+
     await state.set_state(MillingState.diameter)
-    await message.answer("Введите диаметр фрезы (мм):")
+
+    await message.answer(
+        "Введите диаметр фрезы (мм):"
+    )
 
 
 @router.message(MillingState.diameter)
-async def milling_diameter(message: Message, state: FSMContext):
+async def diameter_selected(message: Message, state: FSMContext):
+
     try:
         diameter = float(message.text.replace(",", "."))
+
     except ValueError:
-        await message.answer("Введите число, например: 10")
+        await message.answer("Введите число.")
         return
 
     await state.update_data(diameter=diameter)
+
     await state.set_state(MillingState.teeth)
-    await message.answer("Введите количество зубьев:")
+
+    await message.answer(
+        "Введите количество зубьев:"
+    )
 
 
 @router.message(MillingState.teeth)
-async def milling_teeth(message: Message, state: FSMContext):
+async def teeth_selected(message: Message, state: FSMContext):
+
     try:
         teeth = int(message.text)
+
     except ValueError:
         await message.answer("Введите целое число.")
         return
 
-    await state.update_data(teeth=teeth)
-    await state.set_state(MillingState.vc)
-    await message.answer("Введите скорость резания Vc (м/мин):")
-
-
-@router.message(MillingState.vc)
-async def milling_vc(message: Message, state: FSMContext):
-    try:
-        vc = float(message.text.replace(",", "."))
-    except ValueError:
-        await message.answer("Введите число.")
-        return
-
-    await state.update_data(vc=vc)
-    await state.set_state(MillingState.fz)
-    await message.answer("Введите подачу на зуб Fz (мм):")
-
-
-@router.message(MillingState.fz)
-async def milling_result(message: Message, state: FSMContext):
-    try:
-        fz = float(message.text.replace(",", "."))
-    except ValueError:
-        await message.answer("Введите число.")
-        return
-
     data = await state.get_data()
 
+    material = data["material"]
+    tool = data["tool"]
     diameter = data["diameter"]
-    teeth = data["teeth"]
-    vc = data["vc"]
+
+    modes = get_modes(material, tool)
+
+    vc = modes["vc"]
+    fz = modes["fz"]
+
+    ap = diameter * modes["ap"]
+    ae = diameter * modes["ae"]
 
     rpm = spindle_speed(vc, diameter)
     feed = feed_rate(rpm, teeth, fz)
 
     await message.answer(
-        f"""📐 Результат расчёта
+f"""
+📐 РЕЖИМЫ РЕЗАНИЯ
 
-Диаметр: Ø{diameter:g} мм
-Количество зубьев: {teeth}
+Материал:
+{material}
 
-Vc = {vc} м/мин
-Fz = {fz} мм
+Инструмент:
+{tool}
 
-Обороты S = {rpm} об/мин
-Подача F = {feed} мм/мин"""
+Диаметр:
+Ø{diameter:.1f} мм
+
+Количество зубьев:
+{teeth}
+
+────────────────
+
+Vc:
+{vc} м/мин
+
+Fz:
+{fz:.3f} мм
+
+────────────────
+
+Обороты S
+
+{rpm} об/мин
+
+Подача F
+
+{feed} мм/мин
+
+────────────────
+
+Ap
+
+{ap:.1f} мм
+
+Ae
+
+{ae:.1f} мм
+"""
     )
 
     await state.clear()
