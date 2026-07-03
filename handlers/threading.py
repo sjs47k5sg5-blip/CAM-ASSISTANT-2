@@ -19,7 +19,7 @@ from keyboards.main_menu import main_menu
 router = Router()
 
 
-@router.message(F.text == "🔩 Нарезание резьбы")
+@router.message(F.text == "🌀 Резьба")
 async def thread_start(message: Message, state: FSMContext):
     await state.clear()
 

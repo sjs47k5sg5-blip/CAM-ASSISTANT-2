@@ -38,13 +38,26 @@ async def back_to_menu(message: Message, state: FSMContext):
 
 
 
-@router.message(F.text == "🕳 Сверление")
+@router.message(
+    F.text.in_([
+        "🕳 Сквозное отверстие",
+        "🕳 Глухое отверстие",
+    ])
+)
 async def drilling_start(message: Message, state: FSMContext):
+
     await state.clear()
-    await state.set_state(DrillingState.material)
+
+    await state.update_data(
+        hole_type=message.text
+    )
+
+    await state.set_state(
+        DrillingState.material
+    )
 
     await message.answer(
-        "🕳 Выберите материал",
+        "🧱 Выберите материал",
         reply_markup=materials_keyboard,
     )
 
