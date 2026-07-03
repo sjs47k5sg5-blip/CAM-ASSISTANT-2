@@ -70,7 +70,7 @@ def contour_gcode(
 
     lines.append("")
 
-    lines.append("G00 G43 H01 Z100.")
+    lines.append(f"G00 G43 H{tool:02d} Z100.")
 
     current_depth = 0
 
@@ -85,19 +85,21 @@ def contour_gcode(
         lines.append(f"(PASS {p + 1})")
 
         lines.append(
-            f"G00 X{start_x:.3f} Y{start_y:.3f}"
-        )
+    f"G00 X{start_x:.3f} Y{start_y:.3f}"
+     )
 
-        lines.append(
-            f"G01 Z-{current_depth:.3f} F200"
-        )
+     lines.append("G00 Z5.")
+
+     lines.append(
+    f"G01 Z-{current_depth:.3f} F200"
+     )
 
         comp = get_compensation(
             outside,
             climb,
         )
 
-        lines.append(f"{comp} D01")
+        lines.append(f"{comp} D{tool:02d}")
 
         for cmd in lead_in(
             p1[0],
@@ -144,12 +146,13 @@ def contour_gcode(
             )
 
         for cmd in lead_out(
-            p1[0],
-            p1[1],
-        ):
-            lines.append(cmd)
+    p1[0],
+    p1[1],
+ ):
+    lines.append(cmd)
 
-        lines.append("G00 Z5.")
+    lines.append("G40")
+    lines.append("G00 Z5.")
 
         
 
