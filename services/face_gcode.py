@@ -1,5 +1,7 @@
 import math
 
+from services.geometry import rectangle_points
+
 
 def face_gcode(
     tool: int,
@@ -9,8 +11,27 @@ def face_gcode(
     length: float,
     depth: float,
     step: float,
+    zero: str = "↙️ Левый нижний",
 ):
+
     passes = math.ceil(width / step)
+
+    points = rectangle_points(
+        length=length,
+        width=width,
+        zero=zero,
+    )
+
+    p1 = points[0]
+    p2 = points[1]
+    p3 = points[2]
+    p4 = points[3]
+
+    xmin = min(p1[0], p2[0], p3[0], p4[0])
+    xmax = max(p1[0], p2[0], p3[0], p4[0])
+
+    ymin = min(p1[1], p2[1], p3[1], p4[1])
+    ymax = max(p1[1], p2[1], p3[1], p4[1])
 
     lines = []
 
@@ -26,7 +47,6 @@ def face_gcode(
     lines.append("G80")
     lines.append("")
     lines.append(f"T{tool} M06")
-    lines.append("")
     lines.append("G54")
     lines.append("")
     lines.append(f"S{rpm} M03")
@@ -35,19 +55,39 @@ def face_gcode(
     lines.append("G00 G43 H01 Z50.")
     lines.append("")
 
-    y = -5.0
+    y = ymin - 5
 
     for i in range(passes):
 
         lines.append(f"(PASS {i + 1})")
 
-        lines.append(f"G00 X-5.000 Y{y:.3f}")
-        lines.append(f"G01 Z-{depth:.3f} F200")
-
         if i % 2 == 0:
-            lines.append(f"G01 X{length:.3f} F{feed}")
+
+            lines.append(
+                f"G00 X{xmin - 5:.3f} Y{y:.3f}"
+            )
+
+            lines.append(
+                f"G01 Z-{depth:.3f} F200"
+            )
+
+            lines.append(
+                f"G01 X{xmax + 5:.3f} F{feed}"
+            )
+
         else:
-            lines.append("G01 X-5.000")
+
+            lines.append(
+                f"G00 X{xmax + 5:.3f} Y{y:.3f}"
+            )
+
+            lines.append(
+                f"G01 Z-{depth:.3f} F200"
+            )
+
+            lines.append(
+                f"G01 X{xmin - 5:.3f} F{feed}"
+            )
 
         lines.append("G00 Z5.000")
 

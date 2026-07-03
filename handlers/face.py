@@ -9,6 +9,7 @@ from keyboards.milling_tools import milling_tools_keyboard
 from keyboards.face import face_strategy_keyboard
 from keyboards.overlap import overlap_keyboard
 from keyboards.main_menu import main_menu
+from keyboards.zero import zero_keyboard
 
 from services.material_service import get_modes
 from services.face import (
@@ -183,6 +184,37 @@ async def face_overlap(message: Message, state: FSMContext):
 async def face_strategy(message: Message, state: FSMContext):
     strategy = message.text
 
+await state.update_data(strategy=strategy)
+
+await state.set_state(FaceState.zero)
+
+await message.answer(
+    "🎯 Выберите ноль детали",
+    reply_markup=zero_keyboard,
+)
+
+return
+
+@router.message(FaceState.zero)
+async def face_zero(message: Message, state: FSMContext):
+
+    zero = message.text
+
+    if zero not in (
+        "↙️ Левый нижний",
+        "↖️ Левый верхний",
+        "↘️ Правый нижний",
+        "↗️ Правый верхний",
+        "⭕ Центр детали",
+    ):
+        await message.answer(
+            "Выберите ноль детали кнопкой.",
+            reply_markup=zero_keyboard,
+        )
+        return
+
+    await state.update_data(zero=zero)
+
     data = await state.get_data()
 
     try:
@@ -228,6 +260,7 @@ async def face_strategy(message: Message, state: FSMContext):
         length=data["length"],
         depth=data["depth"],
         step=step,
+        zero=zero,
     )
 
     filename = "FACE.nc"
@@ -250,6 +283,12 @@ async def face_strategy(message: Message, state: FSMContext):
 
 Количество зубьев:
 {data["teeth"]}
+
+────────────────
+
+Ноль детали
+
+{zero}
 
 ────────────────
 
@@ -279,7 +318,7 @@ Ae = {step:.1f} мм
 
 Стратегия
 
-{strategy}
+{data["strategy"]}
 
 ────────────────
 
@@ -289,11 +328,8 @@ Ae = {step:.1f} мм
 
 ────────────────
 
-Пример G-кода
-
-<pre>{gcode}</pre>
+📄 G-код сохранён в файле FACE.nc
 """,
-        parse_mode="HTML",
         reply_markup=main_menu,
     )
 

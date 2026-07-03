@@ -36,6 +36,7 @@ class FaceState(StatesGroup):
     rpm = State()
     overlap = State()
     strategy = State()
+    zero = State()
 
 
 # ==========================
@@ -43,18 +44,19 @@ class FaceState(StatesGroup):
 # ==========================
 
 class ContourState(StatesGroup):
+    type = State()
     material = State()
     tool = State()
     diameter = State()
     teeth = State()
-    width = State()
     length = State()
+    width = State()
     depth = State()
     step = State()
     rpm = State()
     allowance = State()
     direction = State()
-    type = State()
+    zero = State()
 
 
 # ==========================
@@ -83,5 +85,5 @@ class ThreadState(StatesGroup):
 # ==========================
 
 class ToleranceState(StatesGroup):
-    tolerance = State()
+    field = State()
     diameter = State()

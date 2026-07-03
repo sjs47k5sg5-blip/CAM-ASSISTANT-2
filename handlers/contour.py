@@ -10,6 +10,7 @@ from keyboards.milling_tools import milling_tools_keyboard
 from keyboards.allowance import allowance_keyboard
 from keyboards.direction import direction_keyboard
 from keyboards.main_menu import main_menu
+from keyboards.zero import zero_keyboard
 
 from services.material_service import get_modes
 from services.contour import (
@@ -235,12 +236,53 @@ async def contour_allowance(message: Message, state: FSMContext):
         "Выберите направление фрезерования",
         reply_markup=direction_keyboard,
     )
+
+
 @router.message(ContourState.direction)
 async def contour_direction(message: Message, state: FSMContext):
 
     direction = message.text
 
+    if direction not in ("➡️ Попутное", "⬅️ Встречное"):
+        await message.answer(
+            "Выберите направление кнопкой.",
+            reply_markup=direction_keyboard,
+        )
+        return
+
+    await state.update_data(direction=direction)
+
+    await state.set_state(ContourState.zero)
+
+    await message.answer(
+        "🎯 Выберите ноль детали",
+        reply_markup=zero_keyboard,
+    )
+
+
+@router.message(ContourState.zero)
+async def contour_zero(message: Message, state: FSMContext):
+
+    zero = message.text
+
+    if zero not in (
+        "↙️ Левый нижний",
+        "↖️ Левый верхний",
+        "↘️ Правый нижний",
+        "↗️ Правый верхний",
+        "⭕ Центр детали",
+    ):
+        await message.answer(
+            "Выберите ноль детали кнопкой.",
+            reply_markup=zero_keyboard,
+        )
+        return
+
+    await state.update_data(zero=zero)
+
     data = await state.get_data()
+
+    direction = data["direction"]
 
     try:
         modes = get_modes(
@@ -287,6 +329,7 @@ async def contour_direction(message: Message, state: FSMContext):
         allowance=data["allowance"],
         outside=outside,
         climb=climb,
+        zero=zero,
     )
 
     filename = "CONTOUR.nc"
@@ -295,11 +338,14 @@ async def contour_direction(message: Message, state: FSMContext):
         file.write(gcode)
 
     await message.answer(
-    f"""
+        f"""
 ⭕ КОНТУР
 
 Тип:
 {data["side"]}
+
+Ноль детали:
+{zero}
 
 Материал:
 {data["material"]}
@@ -310,57 +356,16 @@ async def contour_direction(message: Message, state: FSMContext):
 Диаметр:
 Ø{data["diameter"]:.1f} мм
 
-Количество зубьев:
-{data["teeth"]}
+Подача:
+F{feed}
 
-────────────────
-
-Обороты
-
-S{data["rpm"]} об/мин
-
-Подача
-
-F{feed} мм/мин
-
-────────────────
-
-Глубина
-
-{data["depth"]} мм
-
-Шаг по Z
-
-{data["step"]} мм
-
-Проходов
-
-{passes}
-
-────────────────
-
-Припуск
-
-{data["allowance"]} мм
-
-────────────────
-
-Направление
-
-{direction}
-
-────────────────
-
-Время обработки
-
-≈ {time_sec} сек
-
-────────────────
+Обороты:
+S{data["rpm"]}
 
 📄 G-код сохранён в файле CONTOUR.nc
 """,
-    reply_markup=main_menu,
-)
+        reply_markup=main_menu,
+    )
 
     await message.answer_document(
         FSInputFile(filename),
