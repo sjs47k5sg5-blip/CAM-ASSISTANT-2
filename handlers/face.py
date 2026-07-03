@@ -23,7 +23,6 @@ router = Router()
 
 @router.message(F.text == "🟦 Торцевое фрезерование")
 async def face_start(message: Message, state: FSMContext):
-
     await state.clear()
 
     await state.set_state(FaceState.material)
@@ -36,14 +35,9 @@ async def face_start(message: Message, state: FSMContext):
 
 @router.message(FaceState.material)
 async def face_material(message: Message, state: FSMContext):
+    await state.update_data(material=message.text)
 
-    await state.update_data(
-        material=message.text
-    )
-
-    await state.set_state(
-        FaceState.tool
-    )
+    await state.set_state(FaceState.tool)
 
     await message.answer(
         "🛠 Выберите тип фрезы",
@@ -53,7 +47,6 @@ async def face_material(message: Message, state: FSMContext):
 
 @router.message(FaceState.tool)
 async def face_tool(message: Message, state: FSMContext):
-
     tool = message.text
 
     if tool not in ("Твердосплавная", "HSS"):
@@ -65,66 +58,43 @@ async def face_tool(message: Message, state: FSMContext):
 
     await state.update_data(tool=tool)
 
-    await state.set_state(
-        FaceState.diameter
-    )
+    await state.set_state(FaceState.diameter)
 
-    await message.answer(
-        "Введите диаметр фрезы (мм):"
-    )
+    await message.answer("Введите диаметр фрезы (мм):")
 
 
 @router.message(FaceState.diameter)
 async def face_diameter(message: Message, state: FSMContext):
-
     try:
-        diameter = float(
-            message.text.replace(",", ".")
-        )
+        diameter = float(message.text.replace(",", "."))
     except ValueError:
-        await message.answer(
-            "Введите число."
-        )
+        await message.answer("Введите число.")
         return
 
-    await state.update_data(
-        diameter=diameter
-    )
+    await state.update_data(diameter=diameter)
 
-    await state.set_state(
-        FaceState.teeth
-    )
+    await state.set_state(FaceState.teeth)
 
-    await message.answer(
-        "Введите количество зубьев:"
-    )
+    await message.answer("Введите количество зубьев:")
 
 
 @router.message(FaceState.teeth)
 async def face_teeth(message: Message, state: FSMContext):
-
     try:
         teeth = int(message.text)
     except ValueError:
-        await message.answer(
-            "Введите целое число."
-        )
+        await message.answer("Введите целое число.")
         return
 
-    await state.update_data(
-        teeth=teeth
-    )
+    await state.update_data(teeth=teeth)
 
-    await state.set_state(
-        FaceState.width
-    )
+    await state.set_state(FaceState.width)
 
-    await message.answer(
-        "Введите ширину обработки (мм):"
-    )
+    await message.answer("Введите ширину обработки (мм):")
+
+
 @router.message(FaceState.width)
 async def face_width(message: Message, state: FSMContext):
-
     try:
         width = float(message.text.replace(",", "."))
     except ValueError:
@@ -135,14 +105,11 @@ async def face_width(message: Message, state: FSMContext):
 
     await state.set_state(FaceState.length)
 
-    await message.answer(
-        "Введите длину обработки (мм):"
-    )
+    await message.answer("Введите длину обработки (мм):")
 
 
 @router.message(FaceState.length)
 async def face_length(message: Message, state: FSMContext):
-
     try:
         length = float(message.text.replace(",", "."))
     except ValueError:
@@ -153,14 +120,11 @@ async def face_length(message: Message, state: FSMContext):
 
     await state.set_state(FaceState.depth)
 
-    await message.answer(
-        "Введите глубину обработки (мм):"
-    )
+    await message.answer("Введите глубину обработки (мм):")
 
 
 @router.message(FaceState.depth)
 async def face_depth(message: Message, state: FSMContext):
-
     try:
         depth = float(message.text.replace(",", "."))
     except ValueError:
@@ -171,14 +135,11 @@ async def face_depth(message: Message, state: FSMContext):
 
     await state.set_state(FaceState.rpm)
 
-    await message.answer(
-        "Введите обороты шпинделя S (об/мин):"
-    )
+    await message.answer("Введите обороты шпинделя S (об/мин):")
 
 
 @router.message(FaceState.rpm)
 async def face_rpm(message: Message, state: FSMContext):
-
     try:
         rpm = int(message.text)
     except ValueError:
@@ -197,7 +158,6 @@ async def face_rpm(message: Message, state: FSMContext):
 
 @router.message(FaceState.overlap)
 async def face_overlap(message: Message, state: FSMContext):
-
     text = message.text.replace("%", "")
 
     try:
@@ -216,10 +176,11 @@ async def face_overlap(message: Message, state: FSMContext):
     await message.answer(
         "Выберите стратегию обработки",
         reply_markup=face_strategy_keyboard,
-    )  
+    )
+
+
 @router.message(FaceState.strategy)
 async def face_strategy(message: Message, state: FSMContext):
-
     strategy = message.text
 
     data = await state.get_data()
