@@ -11,6 +11,19 @@ class ProjectState(StatesGroup):
 
 
 # ==========================
+# Фрезерование
+# ==========================
+
+class MillingState(StatesGroup):
+    material = State()
+    cutter = State()
+    diameter = State()
+    vc = State()
+    z = State()
+    feed = State()
+
+
+# ==========================
 # Торцевое фрезерование
 # ==========================
 
@@ -24,7 +37,7 @@ class FaceState(StatesGroup):
 
 
 # ==========================
-# Контур (в разработке)
+# Контур
 # ==========================
 
 class ContourState(StatesGroup):
@@ -34,6 +47,9 @@ class ContourState(StatesGroup):
     width = State()
     length = State()
     depth = State()
+    step_z = State()
+    rpm = State()
+    allowance = State()
     direction = State()
 
 
