@@ -4,6 +4,11 @@ from services.geometry import (
     rectangle_points,
     contour_start_point,
 )
+from services.lead import lead_in, lead_out
+from services.toolpath import (
+    get_compensation,
+    get_arc,
+)
 
 
 def contour_gcode(
@@ -68,7 +73,8 @@ def contour_gcode(
     lines.append("G00 G43 H01 Z100.")
 
     current_depth = 0
-        for p in range(passes):
+
+    for p in range(passes):
 
         current_depth += step
 
@@ -86,14 +92,20 @@ def contour_gcode(
             f"G01 Z-{current_depth:.3f} F200"
         )
 
-        if outside:
-            lines.append("G41 D01")
-        else:
-            lines.append("G42 D01")
+        comp = get_compensation(
+    outside,
+    climb,
+)
 
-        lines.append(
-            f"G01 X{p1[0]:.3f} Y{p1[1]:.3f} F{feed}"
-        )
+lines.append(f"{comp} D01")
+
+        for cmd in lead_in(
+    p1[0],
+    p1[1],
+):
+    lines.append(cmd)
+
+lines[-2] += f" F{feed}"
 
         if climb:
 
@@ -131,10 +143,17 @@ def contour_gcode(
                 f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}"
             )
 
-        lines.append("G40")
+        for cmd in lead_out(
+    p1[0],
+    p1[1],
+):
+    lines.append(cmd)
 
-        lines.append("G00 Z5.")
-            lines.append("")
+lines.append("G00 Z5.")
+
+        
+
+    lines.append("")
 
     lines.append("G00 Z100.")
 
