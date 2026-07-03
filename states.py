@@ -11,16 +11,14 @@ class ProjectState(StatesGroup):
 
 
 # ==========================
-# Фрезерование
+# Режимы резания
 # ==========================
 
 class MillingState(StatesGroup):
     material = State()
-    cutter = State()
+    tool = State()
     diameter = State()
-    vc = State()
-    z = State()
-    feed = State()
+    teeth = State()
 
 
 # ==========================
