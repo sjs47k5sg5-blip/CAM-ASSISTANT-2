@@ -92,7 +92,7 @@ def contour_gcode(
             f"G01 Z-{current_depth:.3f} F200"
         )
 
-                comp = get_compensation(
+        comp = get_compensation(
             outside,
             climb,
         )
