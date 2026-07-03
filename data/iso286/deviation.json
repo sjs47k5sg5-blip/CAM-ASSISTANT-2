@@ -1,0 +1,53 @@
+{
+  "holes": {
+    "H": { "type": "hole", "ei": 0 },
+    "JS": { "type": "hole", "center": true },
+
+    "G": { "type": "hole" },
+    "F": { "type": "hole" },
+    "E": { "type": "hole" },
+    "D": { "type": "hole" },
+    "C": { "type": "hole" },
+
+    "K": { "type": "hole" },
+    "M": { "type": "hole" },
+    "N": { "type": "hole" },
+    "P": { "type": "hole" },
+    "R": { "type": "hole" },
+    "S": { "type": "hole" },
+    "T": { "type": "hole" },
+    "U": { "type": "hole" },
+    "X": { "type": "hole" },
+    "Y": { "type": "hole" },
+    "Z": { "type": "hole" },
+    "ZA": { "type": "hole" },
+    "ZB": { "type": "hole" },
+    "ZC": { "type": "hole" }
+  },
+
+  "shafts": {
+    "h": { "type": "shaft", "es": 0 },
+    "js": { "type": "shaft", "center": true },
+
+    "g": { "type": "shaft" },
+    "f": { "type": "shaft" },
+    "e": { "type": "shaft" },
+    "d": { "type": "shaft" },
+    "c": { "type": "shaft" },
+
+    "k": { "type": "shaft" },
+    "m": { "type": "shaft" },
+    "n": { "type": "shaft" },
+    "p": { "type": "shaft" },
+    "r": { "type": "shaft" },
+    "s": { "type": "shaft" },
+    "t": { "type": "shaft" },
+    "u": { "type": "shaft" },
+    "x": { "type": "shaft" },
+    "y": { "type": "shaft" },
+    "z": { "type": "shaft" },
+    "za": { "type": "shaft" },
+    "zb": { "type": "shaft" },
+    "zc": { "type": "shaft" }
+  }
+}
