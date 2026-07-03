@@ -182,18 +182,23 @@ async def face_overlap(message: Message, state: FSMContext):
 
 @router.message(FaceState.strategy)
 async def face_strategy(message: Message, state: FSMContext):
+
     strategy = message.text
 
-await state.update_data(strategy=strategy)
+    await state.update_data(
+        strategy=strategy
+    )
 
-await state.set_state(FaceState.zero)
+    await state.set_state(
+        FaceState.zero
+    )
 
-await message.answer(
-    "🎯 Выберите ноль детали",
-    reply_markup=zero_keyboard,
-)
+    await message.answer(
+        "🎯 Выберите ноль детали",
+        reply_markup=zero_keyboard,
+    )
 
-return
+    return
 
 @router.message(FaceState.zero)
 async def face_zero(message: Message, state: FSMContext):
