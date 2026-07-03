@@ -295,7 +295,7 @@ async def contour_direction(message: Message, state: FSMContext):
         file.write(gcode)
 
     await message.answer(
-        f"""
+    f"""
 ⭕ КОНТУР
 
 Тип:
@@ -317,11 +317,11 @@ async def contour_direction(message: Message, state: FSMContext):
 
 Обороты
 
-S{data["rpm"]}
+S{data["rpm"]} об/мин
 
 Подача
 
-F{feed}
+F{feed} мм/мин
 
 ────────────────
 
@@ -345,17 +345,22 @@ F{feed}
 
 ────────────────
 
+Направление
+
+{direction}
+
+────────────────
+
 Время обработки
 
 ≈ {time_sec} сек
 
 ────────────────
 
-<pre>{gcode}</pre>
+📄 G-код сохранён в файле CONTOUR.nc
 """,
-        parse_mode="HTML",
-        reply_markup=main_menu,
-    )
+    reply_markup=main_menu,
+)
 
     await message.answer_document(
         FSInputFile(filename),
