@@ -11,6 +11,7 @@ from .drilling import router as drilling_router
 from .threading import router as threading_router
 
 from .project import router as project_router
+from .reference import router as reference_router
 
 
 def register_handlers(dp: Dispatcher):
@@ -25,3 +26,5 @@ def register_handlers(dp: Dispatcher):
 
     dp.include_router(drilling_router)
     dp.include_router(threading_router)
+
+    dp.include_router(reference_router)
