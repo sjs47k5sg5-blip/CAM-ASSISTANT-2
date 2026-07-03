@@ -92,20 +92,20 @@ def contour_gcode(
             f"G01 Z-{current_depth:.3f} F200"
         )
 
-        comp = get_compensation(
-    outside,
-    climb,
-)
+                comp = get_compensation(
+            outside,
+            climb,
+        )
 
-lines.append(f"{comp} D01")
+        lines.append(f"{comp} D01")
 
         for cmd in lead_in(
-    p1[0],
-    p1[1],
-):
-    lines.append(cmd)
+            p1[0],
+            p1[1],
+        ):
+            lines.append(cmd)
 
-lines[-2] += f" F{feed}"
+        lines[-2] += f" F{feed}"
 
         if climb:
 
@@ -144,12 +144,12 @@ lines[-2] += f" F{feed}"
             )
 
         for cmd in lead_out(
-    p1[0],
-    p1[1],
-):
-    lines.append(cmd)
+            p1[0],
+            p1[1],
+        ):
+            lines.append(cmd)
 
-lines.append("G00 Z5.")
+        lines.append("G00 Z5.")
 
         
 
