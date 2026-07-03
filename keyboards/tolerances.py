@@ -16,6 +16,19 @@ tolerances_keyboard = ReplyKeyboardMarkup(
             KeyboardButton(text="H12"),
         ],
         [
+            KeyboardButton(text="h5"),
+            KeyboardButton(text="h6"),
+            KeyboardButton(text="h7"),
+        ],
+        [
+            KeyboardButton(text="h8"),
+            KeyboardButton(text="h9"),
+            KeyboardButton(text="h10"),
+        ],
+        [
+            KeyboardButton(text="h11"),
+        ],
+        [
             KeyboardButton(text="⬅️ Назад"),
         ],
     ],
