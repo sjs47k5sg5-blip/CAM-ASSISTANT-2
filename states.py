@@ -27,11 +27,15 @@ class MillingState(StatesGroup):
 
 class FaceState(StatesGroup):
     material = State()
-    cutter = State()
+    tool = State()
     diameter = State()
+    teeth = State()
     width = State()
     length = State()
     depth = State()
+    rpm = State()
+    overlap = State()
+    strategy = State()
 
 
 # ==========================
@@ -40,15 +44,17 @@ class FaceState(StatesGroup):
 
 class ContourState(StatesGroup):
     material = State()
-    cutter = State()
+    tool = State()
     diameter = State()
+    teeth = State()
     width = State()
     length = State()
     depth = State()
-    step_z = State()
+    step = State()
     rpm = State()
     allowance = State()
     direction = State()
+    type = State()
 
 
 # ==========================
@@ -56,15 +62,10 @@ class ContourState(StatesGroup):
 # ==========================
 
 class DrillingState(StatesGroup):
-    hole_type = State()
     material = State()
     tool = State()
-    tool_number = State()
     diameter = State()
     depth = State()
-    work_offset = State()
-    r_plane = State()
-    coordinates = State()
 
 
 # ==========================
