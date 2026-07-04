@@ -12,6 +12,7 @@ from keyboards.direction import direction_keyboard
 from keyboards.main_menu import main_menu
 from keyboards.zero import zero_keyboard
 from keyboards.finish import finish_keyboard
+from keyboards.zero_z import zero_z_keyboard
 
 from services.material_service import get_modes
 from services.contour import (
@@ -327,10 +328,9 @@ async def contour_zero(message: Message, state: FSMContext):
     await state.set_state(ContourState.zero_z)
 
     await message.answer(
-        "Выберите ноль по Z:\n\n"
-        "⬆️ Верх заготовки\n"
-        "🔝 Верх детали"
-    )
+    "Выберите ноль по Z:",
+    reply_markup=zero_z_keyboard,
+)
 
 
 @router.message(ContourState.zero_z)
