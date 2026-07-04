@@ -258,6 +258,30 @@ async def contour_allowance(message: Message, state: FSMContext):
         reply_markup=finish_keyboard,
     )
     
+@router.message(ContourState.finish)
+async def contour_finish(message: Message, state: FSMContext):
+
+    if message.text == "✅ Да":
+        finish = True
+    elif message.text == "❌ Нет":
+        finish = False
+    else:
+        await message.answer(
+            "Выберите вариант кнопкой.",
+            reply_markup=finish_keyboard,
+        )
+        return
+
+    await state.update_data(finish=finish)
+
+    await state.set_state(ContourState.direction)
+
+    await message.answer(
+        "Выберите направление фрезерования",
+        reply_markup=direction_keyboard,
+    )
+
+
 @router.message(ContourState.direction)
 async def contour_direction(message: Message, state: FSMContext):
 
@@ -300,6 +324,53 @@ async def contour_zero(message: Message, state: FSMContext):
 
     await state.update_data(zero=zero)
 
+    await state.set_state(ContourState.zero_z)
+
+    await message.answer(
+        "Выберите ноль по Z:\n\n"
+        "⬆️ Верх заготовки\n"
+        "🔝 Верх детали"
+    )
+
+
+@router.message(ContourState.zero_z)
+async def contour_zero_z(message: Message, state: FSMContext):
+
+    if message.text not in (
+        "⬆️ Верх заготовки",
+        "🔝 Верх детали",
+    ):
+        await message.answer(
+            "Выберите вариант кнопкой."
+        )
+        return
+
+    await state.update_data(
+        zero_z=message.text
+    )
+
+    await state.set_state(
+        ContourState.thickness
+    )
+
+    await message.answer(
+        "Введите толщину заготовки (мм):"
+    )
+
+
+@router.message(ContourState.thickness)
+async def contour_thickness(message: Message, state: FSMContext):
+
+    try:
+        thickness = float(message.text.replace(",", "."))
+    except ValueError:
+        await message.answer("Введите число.")
+        return
+
+    await state.update_data(
+        thickness=thickness
+    )
+
     data = await state.get_data()
 
     direction = data["direction"]
@@ -339,21 +410,21 @@ async def contour_zero(message: Message, state: FSMContext):
     climb = direction == "➡️ Попутное"
 
     gcode = contour_gcode(
-    tool=1,
-    rpm=data["rpm"],
-    feed=feed,
-    length=data["length"],
-    width=data["width"],
-    depth=data["depth"],
-    step=data["step"],
-    allowance=data["allowance"],
-    finish=data["finish"],
-    outside=outside,
-    climb=climb,
-    zero=zero,
-    zero_z=data["zero_z"],
-    thickness=data["thickness"],
-)
+        tool=1,
+        rpm=data["rpm"],
+        feed=feed,
+        length=data["length"],
+        width=data["width"],
+        depth=data["depth"],
+        step=data["step"],
+        allowance=data["allowance"],
+        finish=data["finish"],
+        outside=outside,
+        climb=climb,
+        zero=data["zero"],
+        zero_z=data["zero_z"],
+        thickness=data["thickness"],
+    )
 
     filename = "CONTOUR.nc"
 
@@ -368,7 +439,13 @@ async def contour_zero(message: Message, state: FSMContext):
 {data["side"]}
 
 Ноль детали:
-{zero}
+{data["zero"]}
+
+Ноль по Z:
+{data["zero_z"]}
+
+Толщина заготовки:
+{data["thickness"]} мм
 
 Материал:
 {data["material"]}

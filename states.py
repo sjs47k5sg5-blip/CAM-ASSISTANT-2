@@ -45,33 +45,21 @@ class FaceState(StatesGroup):
 
 class ContourState(StatesGroup):
     type = State()
-
     material = State()
     tool = State()
-
     diameter = State()
     teeth = State()
-
     length = State()
     width = State()
-
-    radius = State()
-
     depth = State()
     step = State()
-
     rpm = State()
-
     allowance = State()
-
     finish = State()
-    finish_passes = State()
-
     direction = State()
-
     zero = State()
     zero_z = State()
-
+    thickness = State()
 
 # ==========================
 # Сверление
