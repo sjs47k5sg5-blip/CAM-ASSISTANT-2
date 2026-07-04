@@ -79,7 +79,7 @@ def contour_gcode(
 
         def z_value(value):
 
-        if zero_z == "Верх детали":
+            if zero_z == "Верх детали":
             return -value
 
         else:
