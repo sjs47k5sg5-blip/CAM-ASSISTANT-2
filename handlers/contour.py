@@ -13,6 +13,8 @@ from keyboards.main_menu import main_menu
 from keyboards.zero import zero_keyboard
 from keyboards.finish import finish_keyboard
 from keyboards.zero_z import zero_z_keyboard
+from keyboards.finish_tool import finish_tool_keyboard
+from keyboards.finish_modes import finish_modes_keyboard
 
 from services.material_service import get_modes
 from services.contour import (
@@ -263,23 +265,278 @@ async def contour_allowance(message: Message, state: FSMContext):
 async def contour_finish(message: Message, state: FSMContext):
 
     if message.text == "✅ Да":
-        finish = True
-    elif message.text == "❌ Нет":
-        finish = False
-    else:
-        await message.answer(
-            "Выберите вариант кнопкой.",
-            reply_markup=finish_keyboard,
+
+        await state.update_data(
+            finish=True,
         )
+
+        await state.set_state(
+            ContourState.finish_tool,
+        )
+
+        await message.answer(
+            "Каким инструментом выполнить чистовой проход?",
+            reply_markup=finish_tool_keyboard,
+        )
+
         return
 
-    await state.update_data(finish=finish)
+    elif message.text == "❌ Нет":
 
-    await state.set_state(ContourState.direction)
+        await state.update_data(
+            finish=False,
+        )
+
+        await state.set_state(
+            ContourState.direction,
+        )
+
+        await message.answer(
+            "Выберите направление фрезерования",
+            reply_markup=direction_keyboard,
+        )
+
+        return
+
+    await message.answer(
+        "Выберите вариант кнопкой.",
+        reply_markup=finish_keyboard,
+    ) 
+
+
+@router.message(ContourState.finish_tool)
+async def contour_finish_tool(
+    message: Message,
+    state: FSMContext,
+):
+
+    if message.text == "✅ Тем же инструментом":
+
+        await state.update_data(
+            finish_same_tool=True,
+        )
+
+        await state.set_state(
+            ContourState.finish_modes,
+        )
+
+        await message.answer(
+            "Использовать режимы черновой обработки?",
+            reply_markup=finish_modes_keyboard,
+        )
+
+        return
+
+    if message.text == "🔄 Выбрать другой инструмент":
+
+        await state.update_data(
+            finish_same_tool=False,
+        )
+
+        await state.set_state(
+            ContourState.finish_tool_number,
+        )
+
+        await message.answer(
+            "Введите номер чистового инструмента:"
+        )
+
+        return
+
+    await message.answer(
+        "Выберите вариант кнопкой.",
+        reply_markup=finish_tool_keyboard,
+    )
+
+
+@router.message(ContourState.finish_modes)
+async def contour_finish_modes(
+    message: Message,
+    state: FSMContext,
+):
+
+    if message.text == "✅ Использовать те же режимы":
+
+        await state.update_data(
+            finish_same_modes=True,
+        )
+
+        await state.set_state(
+            ContourState.direction,
+        )
+
+        await message.answer(
+            "Выберите направление фрезерования",
+            reply_markup=direction_keyboard,
+        )
+
+        return
+
+    if message.text == "✏️ Изменить режимы":
+
+        await state.update_data(
+            finish_same_modes=False,
+        )
+
+        await state.set_state(
+            ContourState.finish_rpm,
+        )
+
+        await message.answer(
+            "Введите обороты чистовой обработки S:"
+        )
+
+        return
+
+    await message.answer(
+        "Выберите вариант кнопкой.",
+        reply_markup=finish_modes_keyboard,
+    )
+
+
+@router.message(ContourState.finish_rpm)
+async def contour_finish_rpm(
+    message: Message,
+    state: FSMContext,
+):
+
+    try:
+        rpm = int(message.text)
+    except ValueError:
+        await message.answer("Введите целое число.")
+        return
+
+    await state.update_data(
+        finish_rpm=rpm,
+    )
+
+    await state.set_state(
+        ContourState.finish_feed,
+    )
+
+    await message.answer(
+        "Введите подачу чистовой обработки F:"
+    )
+
+
+@router.message(ContourState.finish_feed)
+async def contour_finish_feed(
+    message: Message,
+    state: FSMContext,
+):
+
+    try:
+        feed = int(message.text)
+    except ValueError:
+        await message.answer("Введите целое число.")
+        return
+
+    await state.update_data(
+        finish_feed=feed,
+    )
+
+    await state.set_state(
+        ContourState.direction,
+    )
 
     await message.answer(
         "Выберите направление фрезерования",
         reply_markup=direction_keyboard,
+    )
+
+
+@router.message(ContourState.finish_tool_number)
+async def contour_finish_tool_number(
+    message: Message,
+    state: FSMContext,
+):
+
+    try:
+        tool = int(message.text)
+    except ValueError:
+        await message.answer("Введите номер инструмента.")
+        return
+
+    await state.update_data(
+        finish_tool_number=tool,
+    )
+
+    await state.set_state(
+        ContourState.finish_tool_type,
+    )
+
+    await message.answer(
+        "Выберите тип чистового инструмента:",
+        reply_markup=milling_tools_keyboard,
+    )
+
+
+@router.message(ContourState.finish_tool_type)
+async def contour_finish_tool_type(
+    message: Message,
+    state: FSMContext,
+):
+
+    await state.update_data(
+        finish_tool=message.text,
+    )
+
+    await state.set_state(
+        ContourState.finish_tool_diameter,
+    )
+
+    await message.answer(
+        "Введите диаметр чистовой фрезы (мм):"
+    )
+
+
+@router.message(ContourState.finish_tool_diameter)
+async def contour_finish_tool_diameter(
+    message: Message,
+    state: FSMContext,
+):
+
+    try:
+        diameter = float(message.text.replace(",", "."))
+    except ValueError:
+        await message.answer("Введите число.")
+        return
+
+    await state.update_data(
+        finish_diameter=diameter,
+    )
+
+    await state.set_state(
+        ContourState.finish_tool_teeth,
+    )
+
+    await message.answer(
+        "Введите количество зубьев:"
+    )
+
+
+@router.message(ContourState.finish_tool_teeth)
+async def contour_finish_tool_teeth(
+    message: Message,
+    state: FSMContext,
+):
+
+    try:
+        teeth = int(message.text)
+    except ValueError:
+        await message.answer("Введите целое число.")
+        return
+
+    await state.update_data(
+        finish_teeth=teeth,
+    )
+
+    await state.set_state(
+        ContourState.finish_rpm,
+    )
+
+    await message.answer(
+        "Введите обороты чистовой обработки S:"
     )
 
 
@@ -411,21 +668,28 @@ async def contour_thickness(message: Message, state: FSMContext):
     climb = direction == "➡️ Попутное"
 
     gcode = contour_gcode(
-        tool=1,
-        rpm=data["rpm"],
-        feed=feed,
-        length=data["length"],
-        width=data["width"],
-        depth=data["depth"],
-        step=data["step"],
-        allowance=data["allowance"],
-        finish=data["finish"],
-        outside=outside,
-        climb=climb,
-        zero=data["zero"],
-        zero_z=data["zero_z"],
-        thickness=data["thickness"],
-    )
+    tool=1,
+    rpm=data["rpm"],
+    feed=feed,
+    length=data["length"],
+    width=data["width"],
+    depth=data["depth"],
+    step=data["step"],
+    allowance=data["allowance"],
+    finish=data["finish"],
+    outside=outside,
+    climb=climb,
+    zero=data["zero"],
+    zero_z=data["zero_z"],
+    thickness=data["thickness"],
+finish_same_tool=data.get("finish_same_tool", True),
+
+finish_tool=data.get("finish_tool_number", 1),
+
+finish_rpm=data.get("finish_rpm", data["rpm"]),
+
+finish_feed=data.get("finish_feed", feed),
+)
 
     filename = "CONTOUR.nc"
 
