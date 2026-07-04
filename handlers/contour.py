@@ -11,6 +11,7 @@ from keyboards.allowance import allowance_keyboard
 from keyboards.direction import direction_keyboard
 from keyboards.main_menu import main_menu
 from keyboards.zero import zero_keyboard
+from keyboards.finish import finish_keyboard
 
 from services.material_service import get_modes
 from services.contour import (
@@ -215,7 +216,6 @@ async def contour_rpm(message: Message, state: FSMContext):
         reply_markup=allowance_keyboard,
     )
 
-
 @router.message(ContourState.allowance)
 async def contour_allowance(message: Message, state: FSMContext):
 
@@ -228,16 +228,36 @@ async def contour_allowance(message: Message, state: FSMContext):
         )
         return
 
-    await state.update_data(allowance=allowance)
-
-    await state.set_state(ContourState.direction)
-
-    await message.answer(
-        "Выберите направление фрезерования",
-        reply_markup=direction_keyboard,
+    await state.update_data(
+        allowance=allowance,
     )
 
+    if allowance == 0:
 
+        await state.update_data(
+            finish=False,
+        )
+
+        await state.set_state(
+            ContourState.direction,
+        )
+
+        await message.answer(
+            "Выберите направление фрезерования",
+            reply_markup=direction_keyboard,
+        )
+
+        return
+
+    await state.set_state(
+        ContourState.finish,
+    )
+
+    await message.answer(
+        "🧹 Выполнить чистовой проход?",
+        reply_markup=finish_keyboard,
+    )
+    
 @router.message(ContourState.direction)
 async def contour_direction(message: Message, state: FSMContext):
 
@@ -319,17 +339,19 @@ async def contour_zero(message: Message, state: FSMContext):
     climb = direction == "➡️ Попутное"
 
     gcode = contour_gcode(
-        tool=1,
-        rpm=data["rpm"],
-        feed=feed,
-        length=data["length"],
-        width=data["width"],
-        depth=data["depth"],
-        step=data["step"],
-        allowance=data["allowance"],
-        outside=outside,
-        climb=climb,
-        zero=zero,
+    tool=1,
+    rpm=data["rpm"],
+    feed=feed,
+    length=data["length"],
+    width=data["width"],
+    depth=data["depth"],
+    step=data["step"],
+    allowance=data["allowance"],
+    finish=data["finish"],
+    outside=outside,
+    climb=climb,
+    zero=zero,
+
     )
 
     filename = "CONTOUR.nc"

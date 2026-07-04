@@ -20,9 +20,12 @@ def contour_gcode(
     depth: float,
     step: float,
     allowance: float,
+    finish: bool = False,
     outside: bool = True,
     climb: bool = True,
     zero: str = "↙️ Левый нижний",
+    zero_z: str = "Верх детали",
+    thickness: float = 0,
 ):
 
     passes = math.ceil(depth / step)
@@ -74,6 +77,12 @@ def contour_gcode(
 
     current_depth = 0
 
+    def z_value(value):
+    if zero_z == "Верх детали":
+        return -value
+    else:
+        return -(thickness - value)
+
     for p in range(passes):
 
         current_depth += step
@@ -91,7 +100,7 @@ def contour_gcode(
         lines.append("G00 Z5.")
 
         lines.append(
-            f"G01 Z-{current_depth:.3f} F200"
+            f"G01 Z{z_value(current_depth):.3f} F200"
         )
 
         comp = get_compensation(
@@ -153,7 +162,66 @@ def contour_gcode(
 
         lines.append("G40")
         lines.append("G00 Z5.")
+    if finish:
 
+        lines.append("")
+        lines.append("(FINISH PASS)")
+
+        lines.append(
+            f"G00 X{start_x:.3f} Y{start_y:.3f}"
+        )
+
+        lines.append(f"G01 Z{z_value(depth):.3f} F200")
+
+        comp = get_compensation(
+            outside,
+            climb,
+        )
+
+        lines.append(f"{comp} D01")
+
+        lines.append(
+            f"G01 X{p1[0]:.3f} Y{p1[1]:.3f} F{feed}"
+        )
+
+        if climb:
+
+            lines.append(
+                f"G01 X{p2[0]:.3f} Y{p2[1]:.3f}"
+            )
+
+            lines.append(
+                f"G01 X{p3[0]:.3f} Y{p3[1]:.3f}"
+            )
+
+            lines.append(
+                f"G01 X{p4[0]:.3f} Y{p4[1]:.3f}"
+            )
+
+            lines.append(
+                f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}"
+            )
+
+        else:
+
+            lines.append(
+                f"G01 X{p4[0]:.3f} Y{p4[1]:.3f}"
+            )
+
+            lines.append(
+                f"G01 X{p3[0]:.3f} Y{p3[1]:.3f}"
+            )
+
+            lines.append(
+                f"G01 X{p2[0]:.3f} Y{p2[1]:.3f}"
+            )
+
+            lines.append(
+                f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}"
+            )
+
+        lines.append("G40")
+        lines.append("G00 Z5.")
         
 
     lines.append("")
