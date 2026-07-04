@@ -78,14 +78,15 @@ def contour_gcode(
 
     current_depth = 0
 
-
     def z_value(value):
+
         if zero_z == "⬆️ Верх детали":
             return -value
-        elif zero_z == "⬆️ Верх заготовки":
+
+        elif zero_z == "⬇️ Низ детали":
             return -(thickness - value)
-        else:
-            return -value
+
+        return -value
 
     for p in range(passes):
 
