@@ -337,24 +337,25 @@ async def contour_zero(message: Message, state: FSMContext):
 async def contour_zero_z(message: Message, state: FSMContext):
 
     if message.text not in (
-        "⬆️ Верх заготовки",
-        "🔝 Верх детали",
+        "⬆️ Верх детали",
+        "⬇️ Низ детали",
     ):
         await message.answer(
-            "Выберите вариант кнопкой."
+            "Выберите вариант кнопкой.",
+            reply_markup=zero_z_keyboard,
         )
         return
 
     await state.update_data(
-        zero_z=message.text
+        zero_z=message.text,
     )
 
     await state.set_state(
-        ContourState.thickness
+        ContourState.thickness,
     )
 
     await message.answer(
-        "Введите толщину заготовки (мм):"
+        "Введите толщину заготовки (мм):",
     )
 
 
