@@ -9,6 +9,12 @@ from services.toolpath import (
     get_compensation,
     get_arc,
 )
+from services.corners import (
+    corner_enabled,
+    chamfer_points,
+    radius_points,
+)
+from services.path_builder import build_path
 
 
 def contour_gcode(
@@ -31,7 +37,12 @@ def contour_gcode(
     finish_tool: int = 1,
     finish_rpm: int = 0,
     finish_feed: int = 0,
+
+    corner_type: str = "none",
+    corner_select: str = "all",
+    corner_value: float = 0,
 ):
+
 
     passes = math.ceil(depth / step)
 
@@ -42,6 +53,22 @@ def contour_gcode(
     allowance=allowance,
     outside=outside,
     )
+
+    # Размер радиуса/фаски для черновой
+    rough_corner_value = corner_value
+
+    if allowance > 0:
+
+        if outside:
+            rough_corner_value += allowance
+        else:
+            rough_corner_value -= allowance
+
+        if rough_corner_value < 0:
+            rough_corner_value = 0
+
+    # Размер радиуса/фаски для чистовой
+    finish_corner_value = corner_value
 
     finish_points = rectangle_points(
     length=length,
@@ -146,41 +173,16 @@ def contour_gcode(
 
         lines[-2] += f" F{feed}"
 
-        if climb:
+        build_path(
+            lines,
+            (p1, p2, p3, p4),
+            climb,
+            outside,
+            corner_type,
+            corner_select,
+            rough_corner_value,
+        )
 
-            lines.append(
-                f"G01 X{p2[0]:.3f} Y{p2[1]:.3f}"
-            )
-
-            lines.append(
-                f"G01 X{p3[0]:.3f} Y{p3[1]:.3f}"
-            )
-
-            lines.append(
-                f"G01 X{p4[0]:.3f} Y{p4[1]:.3f}"
-            )
-
-            lines.append(
-                f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}"
-            )
-
-        else:
-
-            lines.append(
-                f"G01 X{p4[0]:.3f} Y{p4[1]:.3f}"
-            )
-
-            lines.append(
-                f"G01 X{p3[0]:.3f} Y{p3[1]:.3f}"
-            )
-
-            lines.append(
-                f"G01 X{p2[0]:.3f} Y{p2[1]:.3f}"
-            )
-
-            lines.append(
-                f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}"
-            )
 
         for cmd in lead_out(
     p1[0],
@@ -246,20 +248,15 @@ def contour_gcode(
 
         lines[-2] += f" F{feed_f}"
 
-        if climb:
-
-            lines.append(f"G01 X{fp2[0]:.3f} Y{fp2[1]:.3f}")
-            lines.append(f"G01 X{fp3[0]:.3f} Y{fp3[1]:.3f}")
-            lines.append(f"G01 X{fp4[0]:.3f} Y{fp4[1]:.3f}")
-            lines.append(f"G01 X{fp1[0]:.3f} Y{fp1[1]:.3f}")
-
-        else:
-
-            lines.append(f"G01 X{fp4[0]:.3f} Y{fp4[1]:.3f}")
-            lines.append(f"G01 X{fp3[0]:.3f} Y{fp3[1]:.3f}")
-            lines.append(f"G01 X{fp2[0]:.3f} Y{fp2[1]:.3f}")
-            lines.append(f"G01 X{fp1[0]:.3f} Y{fp1[1]:.3f}")
-
+        build_path(
+            lines,
+            (fp1, fp2, fp3, fp4),
+            climb,
+            outside,
+            corner_type,
+            corner_select,
+            finish_corner_value,
+        )
         for cmd in lead_out(
     fp1[0],
     fp1[1],

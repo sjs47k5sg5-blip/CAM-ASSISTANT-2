@@ -7,94 +7,114 @@ def rectangle_points(
     length: float,
     width: float,
     zero: str,
-    allowance: float = 0,
+    allowance: float = 0.0,
     outside: bool = True,
 ) -> List[Point]:
     """
-    Возвращает точки прямоугольника.
-
-    allowance:
-        0 - чистовой контур
-        >0 - черновой контур
-
-    outside:
-        True  - наружный контур
-        False - внутренний контур
+    Возвращает вершины прямоугольника с учетом
+    наружного/внутреннего контура и припуска.
     """
 
-    if outside:
-        x0 = -allowance
-        y0 = -allowance
-        x1 = length + allowance
-        y1 = width + allowance
-    else:
-        x0 = allowance
-        y0 = allowance
-        x1 = length - allowance
-        y1 = width - allowance
+    offset = allowance if outside else -allowance
 
     if zero == "↙️ Левый нижний":
 
-        dx = 0
-        dy = 0
+        x0 = -offset
+        y0 = -offset
 
     elif zero == "↖️ Левый верхний":
 
-        dx = 0
-        dy = -width
+        x0 = -offset
+        y0 = -width + offset
 
     elif zero == "↘️ Правый нижний":
 
-        dx = -length
-        dy = 0
+        x0 = -length + offset
+        y0 = -offset
 
     elif zero == "↗️ Правый верхний":
 
-        dx = -length
-        dy = -width
+        x0 = -length + offset
+        y0 = -width + offset
 
     elif zero == "⭕ Центр детали":
 
-        dx = -length / 2
-        dy = -width / 2
+        x0 = -length / 2 - offset
+        y0 = -width / 2 - offset
 
     else:
         raise ValueError(f"Неизвестный ноль детали: {zero}")
 
     return [
-        (x0 + dx, y0 + dy),
-        (x1 + dx, y0 + dy),
-        (x1 + dx, y1 + dy),
-        (x0 + dx, y1 + dy),
-        (x0 + dx, y0 + dy),
+        (x0, y0),
+        (x0 + length + offset * 2, y0),
+        (x0 + length + offset * 2, y0 + width + offset * 2),
+        (x0, y0 + width + offset * 2),
     ]
 
 
 def contour_start_point(
     first_point: Point,
     allowance: float,
-    distance: float = 10.0,
     outside: bool = True,
+    distance: float = 10.0,
 ) -> Point:
     """
-    Безопасная точка подхода.
-
-    Наружный контур:
-        подход снаружи детали.
-
-    Внутренний контур:
-        подход внутри отверстия.
+    Возвращает безопасную точку захода.
     """
 
     x, y = first_point
 
     if outside:
         return (
-            x - distance,
-            y - distance,
+            x - allowance - distance,
+            y - allowance - distance,
         )
 
     return (
-        x + distance,
-        y + distance,
+        x + allowance - distance,
+        y + allowance - distance,
     )
+
+from typing import Tuple
+
+Point = Tuple[float, float]
+
+
+def rectangle_vertices(
+    length: float,
+    width: float,
+):
+    """
+    Возвращает вершины прямоугольника
+    без смещения.
+    """
+
+    return [
+        (0.0, 0.0),
+        (length, 0.0),
+        (length, width),
+        (0.0, width),
+    ]
+
+
+def close_path(points):
+    """
+    Замыкает контур.
+    """
+
+    if not points:
+        return []
+
+    if points[0] == points[-1]:
+        return points
+
+    return points + [points[0]]
+
+
+def reverse_path(points):
+    """
+    Разворачивает направление обхода.
+    """
+
+    return list(reversed(points))

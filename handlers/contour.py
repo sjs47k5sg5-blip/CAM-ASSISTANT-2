@@ -15,6 +15,8 @@ from keyboards.finish import finish_keyboard
 from keyboards.zero_z import zero_z_keyboard
 from keyboards.finish_tool import finish_tool_keyboard
 from keyboards.finish_modes import finish_modes_keyboard
+from keyboards.corner_type import corner_type_keyboard
+from keyboards.corner_select import corner_select_keyboard
 
 from services.material_service import get_modes
 from services.contour import (
@@ -189,7 +191,118 @@ async def contour_width(message: Message, state: FSMContext):
 
     await state.update_data(width=width)
 
-    await state.set_state(ContourState.depth)
+    await state.set_state(
+        ContourState.corner_type,
+    )
+
+    await message.answer(
+        "Обработать углы?",
+        reply_markup=corner_type_keyboard,
+    )
+
+
+@router.message(ContourState.corner_type)
+async def contour_corner_type(
+    message: Message,
+    state: FSMContext,
+):
+
+    if message.text == "⬜ Без обработки":
+
+        await state.update_data(
+            corner_type="none",
+            corner_select="all",
+            corner_value=0,
+        )
+
+        await state.set_state(
+            ContourState.depth,
+        )
+
+        await message.answer(
+            "Введите глубину обработки Z (мм):"
+        )
+
+        return
+
+    elif message.text == "⭕ Радиусы":
+
+        await state.update_data(
+            corner_type="radius",
+        )
+
+    elif message.text == "🔷 Фаски":
+
+        await state.update_data(
+            corner_type="chamfer",
+        )
+
+    else:
+
+        await message.answer(
+            "Выберите вариант кнопкой.",
+            reply_markup=corner_type_keyboard,
+        )
+
+        return
+
+    await state.set_state(
+        ContourState.corner_select,
+    )
+
+    await message.answer(
+        "Какие углы обработать?",
+        reply_markup=corner_select_keyboard,
+    )
+
+
+@router.message(ContourState.corner_select)
+async def contour_corner_select(
+    message: Message,
+    state: FSMContext,
+):
+
+    await state.update_data(
+        corner_select=message.text,
+    )
+
+    await state.set_state(
+        ContourState.corner_value,
+    )
+
+    data = await state.get_data()
+
+    if data["corner_type"] == "radius":
+        text = "Введите радиус (мм):"
+    else:
+        text = "Введите размер фаски (мм):"
+
+    await message.answer(text)
+
+
+@router.message(ContourState.corner_value)
+async def contour_corner_value(
+    message: Message,
+    state: FSMContext,
+):
+
+    try:
+        value = float(message.text.replace(",", "."))
+    except ValueError:
+        await message.answer("Введите число.")
+        return
+
+    if value <= 0:
+        await message.answer("Размер должен быть больше нуля.")
+        return
+
+    await state.update_data(
+        corner_value=value,
+    )
+
+    await state.set_state(
+        ContourState.depth,
+    )
 
     await message.answer(
         "Введите глубину обработки Z (мм):"
@@ -733,6 +846,9 @@ async def contour_thickness(message: Message, state: FSMContext):
                 finish_modes["fz"],
             ),
         ),
+                 corner_type=data.get("corner_type", "none"),
+        corner_select=data.get("corner_select", "all"),
+        corner_value=data.get("corner_value", 0),
     )
     filename = "CONTOUR.nc"
 

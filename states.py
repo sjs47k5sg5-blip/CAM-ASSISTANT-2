@@ -69,6 +69,9 @@ class ContourState(StatesGroup):
     zero = State()
     zero_z = State()
     thickness = State()
+    corner_type = State()
+    corner_select = State()
+    corner_value = State()
 
 # ==========================
 # Сверление
