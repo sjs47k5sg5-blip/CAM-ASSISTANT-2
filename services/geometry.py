@@ -74,14 +74,27 @@ def contour_start_point(
     first_point: Point,
     allowance: float,
     distance: float = 10.0,
+    outside: bool = True,
 ) -> Point:
     """
-    Точка безопасного захода.
+    Безопасная точка подхода.
+
+    Наружный контур:
+        подход снаружи детали.
+
+    Внутренний контур:
+        подход внутри отверстия.
     """
 
     x, y = first_point
 
+    if outside:
+        return (
+            x - distance,
+            y - distance,
+        )
+
     return (
-        x - distance,
-        y - distance,
+        x + distance,
+        y + distance,
     )

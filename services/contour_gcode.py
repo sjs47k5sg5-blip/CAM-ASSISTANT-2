@@ -62,9 +62,10 @@ def contour_gcode(
     fp4 = finish_points[3]
 
     start_x, start_y = contour_start_point(
-        p1,
-        allowance,
-    )
+    p1,
+    allowance,
+    outside=outside,
+)
 
     lines = []
 
@@ -136,9 +137,11 @@ def contour_gcode(
         lines.append(f"{comp} D{tool:02d}")
 
         for cmd in lead_in(
-            p1[0],
-            p1[1],
-        ):
+    p1[0],
+    p1[1],
+    outside=outside,
+    climb=climb,
+):
             lines.append(cmd)
 
         lines[-2] += f" F{feed}"
@@ -180,9 +183,11 @@ def contour_gcode(
             )
 
         for cmd in lead_out(
-            p1[0],
-            p1[1],
-        ):
+    p1[0],
+    p1[1],
+    outside=outside,
+    climb=climb,
+):
             lines.append(cmd)
 
         lines.append("G40")
@@ -210,9 +215,10 @@ def contour_gcode(
         lines.append("M08")
 
         start_fx, start_fy = contour_start_point(
-            fp1,
-            0,
-        )
+    fp1,
+    0,
+    outside=outside,
+)
 
         lines.append(f"G00 X{start_fx:.3f} Y{start_fy:.3f}")
         lines.append("G00 Z5.")
@@ -231,9 +237,11 @@ def contour_gcode(
         lines.append(f"{comp} D{finish_d:02d}")
 
         for cmd in lead_in(
-            fp1[0],
-            fp1[1],
-        ):
+    fp1[0],
+    fp1[1],
+    outside=outside,
+    climb=climb,
+):
             lines.append(cmd)
 
         lines[-2] += f" F{feed_f}"
@@ -253,9 +261,11 @@ def contour_gcode(
             lines.append(f"G01 X{fp1[0]:.3f} Y{fp1[1]:.3f}")
 
         for cmd in lead_out(
-            fp1[0],
-            fp1[1],
-        ):
+    fp1[0],
+    fp1[1],
+    outside=outside,
+    climb=climb,
+):
             lines.append(cmd)
 
         lines.append("G40")
