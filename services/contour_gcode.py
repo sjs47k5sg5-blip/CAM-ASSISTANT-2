@@ -75,23 +75,17 @@ def contour_gcode(
 
     lines.append(f"G00 G43 H{tool:02d} Z100.")
     
-    def z_value(value: float) -> float:
-
-    if zero_z == "⬆️ Верх детали":
-        return -value
-
-    elif zero_z == "⬆️ Верх заготовки":
-        return -(thickness - value)
-
-    return -value
 
     current_depth = 0
 
+
     def z_value(value):
-        if zero_z == "Верх детали":
+        if zero_z == "⬆️ Верх детали":
             return -value
-        else:
+        elif zero_z == "⬆️ Верх заготовки":
             return -(thickness - value)
+        else:
+            return -value
 
     for p in range(passes):
 
