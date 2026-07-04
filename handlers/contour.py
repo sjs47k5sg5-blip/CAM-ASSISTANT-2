@@ -85,16 +85,45 @@ async def contour_material(message: Message, state: FSMContext):
 async def contour_tool(message: Message, state: FSMContext):
 
     await state.update_data(
-        tool=message.text
+        tool=message.text,
     )
 
     await state.set_state(
-        ContourState.diameter
+        ContourState.tool_number,
+    )
+
+    await message.answer(
+        "Введите номер инструмента:"
+    )
+
+
+@router.message(ContourState.tool_number)
+async def contour_tool_number(
+    message: Message,
+    state: FSMContext,
+):
+
+    try:
+        tool = int(message.text)
+    except ValueError:
+        await message.answer(
+            "Введите номер инструмента."
+        )
+        return
+
+    await state.update_data(
+        tool_number=tool,
+    )
+
+    await state.set_state(
+        ContourState.diameter,
     )
 
     await message.answer(
         "Введите диаметр фрезы (мм):"
     )
+
+
 @router.message(ContourState.diameter)
 async def contour_diameter(message: Message, state: FSMContext):
 
@@ -638,6 +667,15 @@ async def contour_thickness(message: Message, state: FSMContext):
             data["material"],
             data["tool"],
         )
+        
+        finish_modes = modes
+
+        if not data.get("finish_same_tool", True):
+
+            finish_modes = get_modes(
+                data["material"],
+                data["finish_tool"],
+           )
     except KeyError:
         await message.answer(
             "❌ Для выбранного материала или инструмента нет режимов.",
@@ -668,29 +706,34 @@ async def contour_thickness(message: Message, state: FSMContext):
     climb = direction == "➡️ Попутное"
 
     gcode = contour_gcode(
-    tool=1,
-    rpm=data["rpm"],
-    feed=feed,
-    length=data["length"],
-    width=data["width"],
-    depth=data["depth"],
-    step=data["step"],
-    allowance=data["allowance"],
-    finish=data["finish"],
-    outside=outside,
-    climb=climb,
-    zero=data["zero"],
-    zero_z=data["zero_z"],
-    thickness=data["thickness"],
-finish_same_tool=data.get("finish_same_tool", True),
-
-finish_tool=data.get("finish_tool_number", 1),
-
-finish_rpm=data.get("finish_rpm", data["rpm"]),
-
-finish_feed=data.get("finish_feed", feed),
-)
-
+        tool=data["tool_number"],
+        rpm=data["rpm"],
+        feed=feed,
+        length=data["length"],
+        width=data["width"],
+        depth=data["depth"],
+        step=data["step"],
+        allowance=data["allowance"],
+        finish=data["finish"],
+        outside=outside,
+        climb=climb,
+        zero=data["zero"],
+        zero_z=data["zero_z"],
+        thickness=data["thickness"],
+        finish_same_tool=data.get("finish_same_tool", True),
+        finish_tool=data.get("finish_tool_number", 1),
+        finish_rpm=data.get("finish_rpm", data["rpm"]),
+        finish_feed=data.get(
+            "finish_feed",
+            contour_feed(
+                data["rpm"],
+                data["finish_teeth"]
+                if not data.get("finish_same_tool", True)
+                else data["teeth"],
+                finish_modes["fz"],
+            ),
+        ),
+    )
     filename = "CONTOUR.nc"
 
     with open(filename, "w", encoding="utf-8") as file:

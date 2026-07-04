@@ -174,65 +174,70 @@ def contour_gcode(
         lines.append("G00 Z5.")
     if finish:
 
-    lines.append("")
-    lines.append("(FINISH PASS)")
+        lines.append("")
+        lines.append("(FINISH PASS)")
 
-    # если выбран другой инструмент -- меняем его
-    if not finish_same_tool:
+        # если выбран другой инструмент -- меняем его
+        if not finish_same_tool:
 
-        lines.append("G00 Z100.")
-        lines.append("M09")
-        lines.append("M05")
+            lines.append("G00 Z100.")
+            lines.append("M09")
+            lines.append("M05")
 
-        lines.append(f"T{finish_tool} M06")
-        lines.append("G54")
+            lines.append(f"T{finish_tool} M06")
+            lines.append("G54")
 
-        h = finish_tool
-        lines.append(f"G00 G43 H{h:02d} Z100.")
+            lines.append(f"G00 G43 H{finish_tool:02d} Z100.")
 
-        rpm_f = finish_rpm if finish_rpm > 0 else rpm
-        feed_f = finish_feed if finish_feed > 0 else feed
+            rpm_f = finish_rpm if finish_rpm > 0 else rpm
+            feed_f = finish_feed if finish_feed > 0 else feed
 
-        lines.append(f"S{rpm_f} M03")
-        lines.append("M08")
+            lines.append(f"S{rpm_f} M03")
+            lines.append("M08")
 
-    else:
+        else:
 
-        # тот же инструмент -- просто корректируем режимы
-        rpm_f = finish_rpm if finish_rpm > 0 else rpm
-        feed_f = finish_feed if finish_feed > 0 else feed
+            rpm_f = finish_rpm if finish_rpm > 0 else rpm
+            feed_f = finish_feed if finish_feed > 0 else feed
 
-        lines.append(f"S{rpm_f} M03")
-        lines.append("M08")
+            lines.append(f"S{rpm_f} M03")
+            lines.append("M08")
 
-    # подход
-    lines.append(f"G00 X{start_x:.3f} Y{start_y:.3f}")
-    lines.append("G00 Z5.")
+        lines.append(f"G00 X{start_x:.3f} Y{start_y:.3f}")
+        lines.append("G00 Z5.")
 
-    lines.append(f"G01 Z{z_value(depth):.3f} F200")
+        lines.append(f"G01 Z{z_value(depth):.3f} F200")
 
-    comp = get_compensation(outside, climb)
-    lines.append(f"{comp} D{tool:02d}")
+        if finish_same_tool:
+            finish_d = tool
+        else:
+            finish_d = finish_tool
 
-    # ПЕРВАЯ ТОЧКА
-    lines.append(f"G01 X{p1[0]:.3f} Y{p1[1]:.3f} F{feed_f}")
+        comp = get_compensation(
+            outside,
+            climb,
+        )
 
-    if climb:
+        lines.append(f"{comp} D{finish_d:02d}")
 
-        lines.append(f"G01 X{p2[0]:.3f} Y{p2[1]:.3f}")
-        lines.append(f"G01 X{p3[0]:.3f} Y{p3[1]:.3f}")
-        lines.append(f"G01 X{p4[0]:.3f} Y{p4[1]:.3f}")
-        lines.append(f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}")
+        lines.append(f"G01 X{p1[0]:.3f} Y{p1[1]:.3f} F{feed_f}")
 
-    else:
+        if climb:
 
-        lines.append(f"G01 X{p4[0]:.3f} Y{p4[1]:.3f}")
-        lines.append(f"G01 X{p3[0]:.3f} Y{p3[1]:.3f}")
-        lines.append(f"G01 X{p2[0]:.3f} Y{p2[1]:.3f}")
-        lines.append(f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}")
+            lines.append(f"G01 X{p2[0]:.3f} Y{p2[1]:.3f}")
+            lines.append(f"G01 X{p3[0]:.3f} Y{p3[1]:.3f}")
+            lines.append(f"G01 X{p4[0]:.3f} Y{p4[1]:.3f}")
+            lines.append(f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}")
 
-    lines.append("G40")
-    lines.append("G00 Z5.")
+        else:
+
+            lines.append(f"G01 X{p4[0]:.3f} Y{p4[1]:.3f}")
+            lines.append(f"G01 X{p3[0]:.3f} Y{p3[1]:.3f}")
+            lines.append(f"G01 X{p2[0]:.3f} Y{p2[1]:.3f}")
+            lines.append(f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}")
+
+        lines.append("G40")
+        lines.append("G00 Z5.")
         
 
     lines.append("")

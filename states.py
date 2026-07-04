@@ -47,6 +47,7 @@ class ContourState(StatesGroup):
     type = State()
     material = State()
     tool = State()
+    tool_number = State()
     diameter = State()
     teeth = State()
     length = State()
