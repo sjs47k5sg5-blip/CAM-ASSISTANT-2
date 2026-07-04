@@ -351,8 +351,9 @@ async def contour_zero(message: Message, state: FSMContext):
     outside=outside,
     climb=climb,
     zero=zero,
-
-    )
+    zero_z=data["zero_z"],
+    thickness=data["thickness"],
+)
 
     filename = "CONTOUR.nc"
 
