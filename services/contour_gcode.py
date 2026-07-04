@@ -77,11 +77,13 @@ def contour_gcode(
 
     current_depth = 0
 
-    def z_value(value):
-    if zero_z == "Верх детали":
-        return -value
-    else:
-        return -(thickness - value)
+        def z_value(value):
+
+        if zero_z == "Верх детали":
+            return -value
+
+        else:
+            return -(thickness - value)
 
     for p in range(passes):
 
@@ -178,7 +180,7 @@ def contour_gcode(
             climb,
         )
 
-        lines.append(f"{comp} D01")
+        lines.append(f"{comp} D{tool:02d}")
 
         lines.append(
             f"G01 X{p1[0]:.3f} Y{p1[1]:.3f} F{feed}"
