@@ -35,16 +35,31 @@ def contour_gcode(
 
     passes = math.ceil(depth / step)
 
-    points = rectangle_points(
-        length=length,
-        width=width,
-        zero=zero,
+    rough_points = rectangle_points(
+    length=length,
+    width=width,
+    zero=zero,
+    allowance=allowance,
+    outside=outside,
     )
 
-    p1 = points[0]
-    p2 = points[1]
-    p3 = points[2]
-    p4 = points[3]
+    finish_points = rectangle_points(
+    length=length,
+    width=width,
+    zero=zero,
+    )
+
+    # точки черновой
+    p1 = rough_points[0]
+    p2 = rough_points[1]
+    p3 = rough_points[2]
+    p4 = rough_points[3]
+
+    # точки чистовой
+    fp1 = finish_points[0]
+    fp2 = finish_points[1]
+    fp3 = finish_points[2]
+    fp4 = finish_points[3]
 
     start_x, start_y = contour_start_point(
         p1,
@@ -177,7 +192,7 @@ def contour_gcode(
         lines.append("")
         lines.append("(FINISH PASS)")
 
-        # если выбран другой инструмент -- меняем его
+        # выбираем инструмент
         if not finish_same_tool:
 
             lines.append("G00 Z100.")
@@ -186,26 +201,21 @@ def contour_gcode(
 
             lines.append(f"T{finish_tool} M06")
             lines.append("G54")
-
             lines.append(f"G00 G43 H{finish_tool:02d} Z100.")
 
-            rpm_f = finish_rpm if finish_rpm > 0 else rpm
-            feed_f = finish_feed if finish_feed > 0 else feed
+        rpm_f = finish_rpm if finish_rpm > 0 else rpm
+        feed_f = finish_feed if finish_feed > 0 else feed
 
-            lines.append(f"S{rpm_f} M03")
-            lines.append("M08")
+        lines.append(f"S{rpm_f} M03")
+        lines.append("M08")
 
-        else:
+        start_fx, start_fy = contour_start_point(
+            fp1,
+            0,
+        )
 
-            rpm_f = finish_rpm if finish_rpm > 0 else rpm
-            feed_f = finish_feed if finish_feed > 0 else feed
-
-            lines.append(f"S{rpm_f} M03")
-            lines.append("M08")
-
-        lines.append(f"G00 X{start_x:.3f} Y{start_y:.3f}")
+        lines.append(f"G00 X{start_fx:.3f} Y{start_fy:.3f}")
         lines.append("G00 Z5.")
-
         lines.append(f"G01 Z{z_value(depth):.3f} F200")
 
         if finish_same_tool:
@@ -220,21 +230,33 @@ def contour_gcode(
 
         lines.append(f"{comp} D{finish_d:02d}")
 
-        lines.append(f"G01 X{p1[0]:.3f} Y{p1[1]:.3f} F{feed_f}")
+        for cmd in lead_in(
+            fp1[0],
+            fp1[1],
+        ):
+            lines.append(cmd)
+
+        lines[-2] += f" F{feed_f}"
 
         if climb:
 
-            lines.append(f"G01 X{p2[0]:.3f} Y{p2[1]:.3f}")
-            lines.append(f"G01 X{p3[0]:.3f} Y{p3[1]:.3f}")
-            lines.append(f"G01 X{p4[0]:.3f} Y{p4[1]:.3f}")
-            lines.append(f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}")
+            lines.append(f"G01 X{fp2[0]:.3f} Y{fp2[1]:.3f}")
+            lines.append(f"G01 X{fp3[0]:.3f} Y{fp3[1]:.3f}")
+            lines.append(f"G01 X{fp4[0]:.3f} Y{fp4[1]:.3f}")
+            lines.append(f"G01 X{fp1[0]:.3f} Y{fp1[1]:.3f}")
 
         else:
 
-            lines.append(f"G01 X{p4[0]:.3f} Y{p4[1]:.3f}")
-            lines.append(f"G01 X{p3[0]:.3f} Y{p3[1]:.3f}")
-            lines.append(f"G01 X{p2[0]:.3f} Y{p2[1]:.3f}")
-            lines.append(f"G01 X{p1[0]:.3f} Y{p1[1]:.3f}")
+            lines.append(f"G01 X{fp4[0]:.3f} Y{fp4[1]:.3f}")
+            lines.append(f"G01 X{fp3[0]:.3f} Y{fp3[1]:.3f}")
+            lines.append(f"G01 X{fp2[0]:.3f} Y{fp2[1]:.3f}")
+            lines.append(f"G01 X{fp1[0]:.3f} Y{fp1[1]:.3f}")
+
+        for cmd in lead_out(
+            fp1[0],
+            fp1[1],
+        ):
+            lines.append(cmd)
 
         lines.append("G40")
         lines.append("G00 Z5.")

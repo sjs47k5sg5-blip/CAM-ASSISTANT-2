@@ -7,46 +7,66 @@ def rectangle_points(
     length: float,
     width: float,
     zero: str,
+    allowance: float = 0,
+    outside: bool = True,
 ) -> List[Point]:
     """
-    Возвращает вершины прямоугольника
-    относительно выбранного нуля детали.
+    Возвращает точки прямоугольника.
+
+    allowance:
+        0 - чистовой контур
+        >0 - черновой контур
+
+    outside:
+        True  - наружный контур
+        False - внутренний контур
     """
+
+    if outside:
+        x0 = -allowance
+        y0 = -allowance
+        x1 = length + allowance
+        y1 = width + allowance
+    else:
+        x0 = allowance
+        y0 = allowance
+        x1 = length - allowance
+        y1 = width - allowance
 
     if zero == "↙️ Левый нижний":
 
-        x0 = 0.0
-        y0 = 0.0
+        dx = 0
+        dy = 0
 
     elif zero == "↖️ Левый верхний":
 
-        x0 = 0.0
-        y0 = -width
+        dx = 0
+        dy = -width
 
     elif zero == "↘️ Правый нижний":
 
-        x0 = -length
-        y0 = 0.0
+        dx = -length
+        dy = 0
 
     elif zero == "↗️ Правый верхний":
 
-        x0 = -length
-        y0 = -width
+        dx = -length
+        dy = -width
 
     elif zero == "⭕ Центр детали":
 
-        x0 = -length / 2
-        y0 = -width / 2
+        dx = -length / 2
+        dy = -width / 2
 
     else:
         raise ValueError(f"Неизвестный ноль детали: {zero}")
 
     return [
-        (x0, y0),
-        (x0 + length, y0),
-        (x0 + length, y0 + width),
-        (x0, y0 + width),
-        (x0, y0),
+        (x0 + dx, y0 + dy),
+        (x1 + dx, y0 + dy),
+        (x1 + dx, y1 + dy),
+        (x0 + dx, y1 + dy),
+        (x0 + dx, y0 + dy),
     ]
 
 
@@ -56,13 +76,12 @@ def contour_start_point(
     distance: float = 10.0,
 ) -> Point:
     """
-    Возвращает безопасную точку захода
-    перед первым углом контура.
+    Точка безопасного захода.
     """
 
     x, y = first_point
 
     return (
-        x - allowance - distance,
-        y - allowance - distance,
+        x - distance,
+        y - distance,
     )
