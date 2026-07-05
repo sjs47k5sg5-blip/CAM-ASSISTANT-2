@@ -31,9 +31,23 @@ def apply_zero(x, y, mode):
 
 
 # =========================
-# RECT BASE
+# RECT (LINE MODE)
 # =========================
-def rect(x, y, r):
+def rect(x, y):
+
+    return [
+        (0, 0),
+        (x, 0),
+        (x, y),
+        (0, y),
+        (0, 0)
+    ]
+
+
+# =========================
+# RADIUS GEOMETRY (ARC MODE ONLY)
+# =========================
+def radius_path(x, y, r):
 
     return [
         (r, 0),
@@ -48,7 +62,7 @@ def rect(x, y, r):
 
 
 # =========================
-# ARC BUILDER (FANUC SAFE)
+# ARC GENERATOR (SAFE I/J)
 # =========================
 def arc(p1, p2, r):
 
@@ -80,22 +94,7 @@ def arc(p1, p2, r):
 
 
 # =========================
-# SINGLE PATH DECISION ENGINE (KEY FIX)
-# =========================
-def build_toolpath(x, y, r, mode):
-
-    # 🔥 CRITICAL FIX:
-    # ONLY ONE PATH CAN EXIST
-
-    if mode == "РАДИУС":
-        return "ARC", rect(x, y, r)
-
-    else:
-        return "LINE", rect(x, y, 0)
-
-
-# =========================
-# MAIN ENGINE
+# MAIN ENGINE (CRITICAL FIX)
 # =========================
 def contour(
     x,
@@ -134,7 +133,7 @@ def contour(
     g.append("G0 Z5")
 
     # =========================
-    # APPLY ZERO
+    # ZERO APPLY
     # =========================
     xo, yo = apply_zero(x, y, zero)
 
@@ -146,18 +145,24 @@ def contour(
     g.append(f"(R={r})")
 
     # =========================
-    # SINGLE TOOLPATH ONLY
+    # CRITICAL FIX:
+    # ONLY ONE TOOLPATH SELECTED
     # =========================
-    mode, path = build_toolpath(xo, yo, r, corner_type)
+    if corner_type == "РАДИУС":
+        path = radius_path(xo, yo, r)
+        mode = "ARC"
+    else:
+        path = rect(xo, yo)
+        mode = "LINE"
 
     # =========================
-    # START POINT
+    # START
     # =========================
     sx, sy = path[0]
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # ROUGHING (ONLY ONE PATH)
+    # DEPTH PASS (ONLY ONCE PATH)
     # =========================
     z = 0
 
@@ -172,11 +177,11 @@ def contour(
             g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
 
     # =========================
-    # EXECUTION PHASE (NO DUPLICATION)
+    # RADIUS EXECUTION (NO G1 DUPLICATION)
     # =========================
     if mode == "ARC":
 
-        g.append("(SINGLE ARC MODE - NO G1 DUPLICATION)")
+        g.append("(ARC MODE ONLY - NO LINE PASS)")
 
         for i in range(len(path) - 1):
             cmd = arc(path[i], path[i + 1], r)
@@ -188,9 +193,10 @@ def contour(
             g.append(cmd)
 
     # =========================
-    # FINISH (OPTIONAL ONLY)
+    # FINISH PASS (OPTIONAL ONLY)
     # =========================
     if allowance > 0:
+
         g.append("(FINISH PASS ONLY)")
 
         for p in path:
