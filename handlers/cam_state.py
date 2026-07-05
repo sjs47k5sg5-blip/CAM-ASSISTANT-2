@@ -7,9 +7,9 @@ class CamState:
 
     tool: int = 0
     zero: str = ""
-    depth: float = 0.0
-    stepdown: float = 0.0
-    allowance: float = 0.0
+    depth: float = 5.0
+    stepdown: float = 2.0
+    allowance: float = 0.2
 
     corner_type: str = ""
     corner_value: float = 0.0
@@ -18,4 +18,5 @@ class CamState:
     ready: bool = False
 
 
-CAM_DB = {}
+# 💥 ВАЖНО: ЭТО ОБЯЗАТЕЛЬНО ДЛЯ ИМПОРТА
+CAM_MEMORY = {}
