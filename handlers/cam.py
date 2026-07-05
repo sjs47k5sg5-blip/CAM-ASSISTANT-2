@@ -3,112 +3,71 @@ from aiogram.types import Message, BufferedInputFile
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from services.cam_engine import contour
+from keyboards.cam_menu import zero_kb
 
 router = Router()
 
 class CAM(StatesGroup):
     tool = State()
     zero = State()
-    x = State()
-    y = State()
+    size_x = State()
+    size_y = State()
     depth = State()
-    stepdown = State()
-    allowance = State()
-    corner_type = State()
-    corner_value = State()
-    zone = State()
+    feed = State()
 
-# START
 @router.message(F.text == "📐 Контур")
 async def start(message: Message, state: FSMContext):
     await state.clear()
     await message.answer("Диаметр инструмента:")
     await state.set_state(CAM.tool)
 
-# TOOL
 @router.message(CAM.tool)
 async def tool(message: Message, state: FSMContext):
-    await state.update_data(tool=float(message.text))
-    await message.answer("X0 Y0 Z0 (введите OK)")
+    await state.update_data(tool=int(message.text))
+    await message.answer("Выбор нуля:", reply_markup=zero_kb())
     await state.set_state(CAM.zero)
 
-# ZERO
 @router.message(CAM.zero)
 async def zero(message: Message, state: FSMContext):
-    await message.answer("Введите X:")
-    await state.set_state(CAM.x)
+    zmap = {
+        "📍 Центр детали": "CENTER",
+        "📍 ЛВ угол": "TL",
+        "📍 ПВ угол": "TR",
+        "📍 ЛН угол": "BL",
+        "📍 ПН угол": "BR",
+    }
+    await state.update_data(zero=zmap.get(message.text, "CENTER"))
+    await message.answer("X размер:")
+    await state.set_state(CAM.size_x)
 
-# X
-@router.message(CAM.x)
-async def x(message: Message, state: FSMContext):
-    await state.update_data(x=float(message.text))
-    await message.answer("Y:")
-    await state.set_state(CAM.y)
+@router.message(CAM.size_x)
+async def sx(message: Message, state: FSMContext):
+    await state.update_data(sx=float(message.text))
+    await message.answer("Y размер:")
+    await state.set_state(CAM.size_y)
 
-# Y
-@router.message(CAM.y)
-async def y(message: Message, state: FSMContext):
-    await state.update_data(y=float(message.text))
+@router.message(CAM.size_y)
+async def sy(message: Message, state: FSMContext):
+    await state.update_data(sy=float(message.text))
     await message.answer("Глубина:")
     await state.set_state(CAM.depth)
 
-# DEPTH
 @router.message(CAM.depth)
 async def depth(message: Message, state: FSMContext):
     await state.update_data(depth=float(message.text))
-    await message.answer("Шаг по глубине:")
-    await state.set_state(CAM.stepdown)
+    await message.answer("Подача:")
+    await state.set_state(CAM.feed)
 
-# STEPDOWN
-@router.message(CAM.stepdown)
-async def stepdown(message: Message, state: FSMContext):
-    await state.update_data(stepdown=float(message.text))
-    await message.answer("Припуск (0 если нет):")
-    await state.set_state(CAM.allowance)
-
-# ALLOWANCE
-@router.message(CAM.allowance)
-async def allowance(message: Message, state: FSMContext):
-    await state.update_data(allowance=float(message.text))
-    await message.answer("Углы: FASKA / RADIUS / NONE")
-    await state.set_state(CAM.corner_type)
-
-# CORNER TYPE
-@router.message(CAM.corner_type)
-async def corner_type(message: Message, state: FSMContext):
-    await state.update_data(corner_type=message.text)
-
-    if message.text in ["FASKA", "RADIUS"]:
-        await message.answer("Введите значение:")
-        await state.set_state(CAM.corner_value)
-    else:
-        await state.update_data(corner_value=0)
-        await message.answer("Зона: ALL / TL / TR / BL / BR")
-        await state.set_state(CAM.zone)
-
-# CORNER VALUE
-@router.message(CAM.corner_value)
-async def corner_value(message: Message, state: FSMContext):
-    await state.update_data(corner_value=float(message.text))
-    await message.answer("Зона: ALL / TL / TR / BL / BR")
-    await state.set_state(CAM.zone)
-
-# ZONE + BUILD
-@router.message(CAM.zone)
-async def zone(message: Message, state: FSMContext):
+@router.message(CAM.feed)
+async def feed(message: Message, state: FSMContext):
     data = await state.get_data()
 
     gcode = contour(
-        data["x"],
-        data["y"],
-        data["depth"],
-        data["stepdown"],
+        data["sx"], data["sy"],
+        data["depth"], float(message.text),
         data["tool"],
-        data["allowance"],
-        data["stepdown"],
-        data["corner_type"],
-        data["corner_value"],
-        message.text
+        data["zero"],
+        data["sx"], data["sy"]
     )
 
     file = BufferedInputFile(gcode.encode(), filename="cam.nc")

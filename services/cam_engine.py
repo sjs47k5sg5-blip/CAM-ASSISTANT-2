@@ -1,50 +1,38 @@
-def contour(x, y, depth, feed, tool_dia, allowance, stepdown, corner_type, corner_value, zone):
+def apply_zero(x, y, zero, sx, sy):
+    # transform coordinates based on zero point
+    if zero == "CENTER":
+        return x + sx/2, y + sy/2
+    if zero == "TL":
+        return x, y + sy
+    if zero == "TR":
+        return x + sx, y + sy
+    if zero == "BL":
+        return x, y
+    if zero == "BR":
+        return x + sx, y
+    return x, y
+
+
+def contour(x, y, depth, feed, tool, zero, sx, sy):
+
+    ox, oy = apply_zero(0, 0, zero, sx, sy)
+    ex, ey = apply_zero(x, y, zero, sx, sy)
 
     g = []
     g.append("G21 G90")
     g.append("G0 Z5")
-    g.append("G0 X0 Y0")
+    g.append(f"T{tool} M6")
 
-    # TOOL
-    g.append(f"T{tool_dia} M6")
+    g.append(f"G0 X{ox} Y{oy}")
 
-    # SIMPLE compensation logic
-    if tool_dia > 10:
-        g.append("G41 D1")
-    else:
-        g.append("G42 D1")
-
-    # ROUGH PASS
-    z = 0
-    while z > -depth:
-        z -= stepdown
-        if z < -depth:
-            z = -depth
-
-        g.append(f"G1 Z{z} F120")
-        g.append(f"G1 X{x} Y0 F{feed}")
-        g.append(f"G1 X{x} Y{y}")
-        g.append(f"G1 X0 Y{y}")
-        g.append(f"G1 X0 Y0")
-
-    # FINISH PASS
-    if allowance > 0:
-        g.append("(FINISH PASS)")
-        g.append(f"G1 Z{-depth} F80")
-        g.append(f"G1 X{x} Y0 F{feed}")
-        g.append(f"G1 X{x} Y{y}")
-        g.append(f"G1 X0 Y{y}")
-        g.append(f"G1 X0 Y0")
-
-    # CORNERS LOGIC (SIMPLIFIED)
-    if corner_type == "FASKA":
-        g.append(f"(CHAMFER {corner_value})")
-    elif corner_type == "RADIUS":
-        g.append(f"(RADIUS {corner_value})")
-
-    if zone != "ALL":
-        g.append(f"(ZONE {zone})")
+    g.append(f"G1 Z-{depth} F120")
+    g.append(f"G1 X{ex} Y{oy} F{feed}")
+    g.append(f"G1 X{ex} Y{ey}")
+    g.append(f"G1 X{ox} Y{ey}")
+    g.append(f"G1 X{ox} Y{oy}")
 
     g.append("G0 Z5")
     g.append("M30")
-    return "\n".join(g)
+
+    return "
+".join(g)
