@@ -31,9 +31,9 @@ def apply_zero(x, y, mode):
 
 
 # =========================
-# BASE GEOMETRY (ONCE ONLY)
+# BASE GEOMETRY
 # =========================
-def build_base(x, y, r):
+def base_path(x, y, r):
 
     return [
         (r, 0),
@@ -48,22 +48,7 @@ def build_base(x, y, r):
 
 
 # =========================
-# ARC CACHE BUILDER (CRITICAL FIX)
-# =========================
-def build_arc_cache(path, r):
-
-    arcs = []
-
-    for i in range(len(path) - 1):
-        arcs.append((path[i], path[i + 1]))
-
-    arcs.append((path[-1], path[0]))
-
-    return arcs
-
-
-# =========================
-# ARC GENERATOR (USED ONLY ONCE PER CACHE)
+# ARC GENERATOR
 # =========================
 def arc(p1, p2, r):
 
@@ -95,7 +80,25 @@ def arc(p1, p2, r):
 
 
 # =========================
-# MAIN ENGINE (ARC CACHE FIXED)
+# FINISH GEOMETRY (CRITICAL FIX)
+# =========================
+def finish_path(x, y, allowance):
+
+    # 🔥 IMPORTANT:
+    # finish is NOT same as rough
+    offset = allowance
+
+    return [
+        (offset, offset),
+        (x - offset, offset),
+        (x - offset, y - offset),
+        (offset, y - offset),
+        (offset, offset)
+    ]
+
+
+# =========================
+# MAIN ENGINE (V61 FIXED FINISH LOGIC)
 # =========================
 def contour(
     x,
@@ -134,38 +137,30 @@ def contour(
     g.append("G0 Z5")
 
     # =========================
-    # APPLY ZERO
+    # ZERO
     # =========================
     xo, yo = apply_zero(x, y, zero)
 
-    offset = tool / 2
-    xo -= offset
-    yo -= offset
+    offset_tool = tool / 2
+    xo -= offset_tool
+    yo -= offset_tool
 
     g.append(f"(MODE={corner_type})")
     g.append(f"(R={r})")
 
     # =========================
-    # BUILD GEOMETRY ONCE
+    # ROUGH PATH (MAIN CUT)
     # =========================
-    path = build_base(xo, yo, r)
+    rough = base_path(xo, yo, r)
 
     # =========================
-    # ARC CACHE (CRITICAL FIX)
+    # START POINT
     # =========================
-    arc_cache = None
-
-    if corner_type == "РАДИУС":
-        arc_cache = build_arc_cache(path, r)
-
-    # =========================
-    # START
-    # =========================
-    sx, sy = path[0]
+    sx, sy = rough[0]
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # DEPTH LOOP (NO REBUILD EVER)
+    # ROUGHING (ONLY THIS PATH)
     # =========================
     z = 0
 
@@ -176,38 +171,45 @@ def contour(
 
         g.append(f"G1 Z{z:.3f} F120")
 
-        # =========================
-        # TOOLPATH EXECUTION (REUSED)
-        # =========================
         if corner_type == "РАДИУС":
 
-            for p1, p2 in arc_cache:
-                cmd = arc(p1, p2, r)
+            for i in range(len(rough) - 1):
+                cmd = arc(rough[i], rough[i + 1], r)
                 if cmd:
                     g.append(cmd)
 
+            cmd = arc(rough[-1], rough[0], r)
+            if cmd:
+                g.append(cmd)
+
         else:
 
-            for p in path:
+            for p in rough:
                 g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
 
     # =========================
-    # FINISH (NO ARC REBUILD)
+    # TRUE FINISH (FIXED - NOT DUPLICATE)
     # =========================
     if allowance > 0:
 
-        g.append("(FINISH PASS)")
+        g.append("(TRUE FINISH PASS - OFFSET GEOMETRY)")
+
+        fin = finish_path(xo, yo, allowance)
 
         if corner_type == "РАДИУС":
 
-            for p1, p2 in arc_cache:
-                cmd = arc(p1, p2, r)
+            for i in range(len(fin) - 1):
+                cmd = arc(fin[i], fin[i + 1], r)
                 if cmd:
                     g.append(cmd)
 
+            cmd = arc(fin[-1], fin[0], r)
+            if cmd:
+                g.append(cmd)
+
         else:
 
-            for p in path:
+            for p in fin:
                 g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
 
     # =========================
