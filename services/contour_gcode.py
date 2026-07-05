@@ -7,13 +7,8 @@ from services.geometry import (
 from services.lead import lead_in, lead_out
 from services.toolpath import (
     get_compensation,
-    get_arc,
 )
-from services.corners import (
-    corner_enabled,
-    chamfer_points,
-    radius_points,
-)
+
 from services.path_builder import build_path
 
 

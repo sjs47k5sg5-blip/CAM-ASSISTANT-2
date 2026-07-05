@@ -1,7 +1,7 @@
 from services.corners import (
     corner_enabled,
     chamfer_points,
-    radius_points,
+    radius_arc,
 )
 
 
@@ -64,18 +64,17 @@ def build_path(
 
             else:
 
-                start, end = radius_points(
+                start, end, center = radius_arc(
                     prev,
                     cur,
                     nxt,
                     corner_value,
                 )
-
         else:
 
             start = cur
             end = cur
-                    # Первый элемент траектории
+        # Первый элемент траектории
         if i == 0:
 
             if use_corner:
@@ -89,44 +88,16 @@ def build_path(
                     f"Y{cur[1]:.3f}"
                 )
 
-        # Если предыдущий угол тоже обработан,
-        # идем от конца предыдущей дуги/фаски
         if i > 0:
 
-            prev_prev = order[(i - 2) % count]
+            target = start if use_corner else cur
 
-            prev_enabled = (
-                corner_type != "none"
-                and corner_value > 0
-                and corner_enabled(
-                    i,
-                    corner_select,
-                )
+            lines.append(
+                f"G01 X{target[0]:.3f} "
+                f"Y{target[1]:.3f}"
             )
 
-            if prev_enabled:
-
-                if corner_type == "chamfer":
-                    _, prev_end = chamfer_points(
-                        prev_prev,
-                        prev,
-                        cur,
-                        corner_value,
-                    )
-                else:
-                    _, prev_end = radius_points(
-                        prev_prev,
-                        prev,
-                        cur,
-                        corner_value,
-                    )
-
-                target = start if use_corner else cur
-
-                lines.append(
-                    f"G01 X{target[0]:.3f} "
-                    f"Y{target[1]:.3f}"
-                )
+                
          # Строим фаску
         if use_corner and corner_type == "chamfer":
 
@@ -138,12 +109,16 @@ def build_path(
         # Строим радиус
         elif use_corner and corner_type == "radius":
 
-            lines.append(
-                f"{arc} "
-                f"X{end[0]:.3f} "
-                f"Y{end[1]:.3f} "
-                f"R{corner_value:.3f}"
-            )
+    offset_i = center[0] - start[0]
+    offset_j = center[1] - start[1]
+
+    lines.append(
+        f"{arc} "
+        f"X{end[0]:.3f} "
+        f"Y{end[1]:.3f} "
+        f"I{offset_i:.3f} "
+        f"J{offset_j:.3f}"
+    )
 
     # Замыкаем контур
     first = order[0]
@@ -170,7 +145,7 @@ def build_path(
                 corner_value,
             )
         else:
-            start, _ = radius_points(
+            start, _, _ = radius_arc(
                 prev,
                 first,
                 nxt,
