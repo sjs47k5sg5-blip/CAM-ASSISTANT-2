@@ -6,6 +6,9 @@ from aiogram.fsm.context import FSMContext
 router = Router()
 
 
+# =========================
+# FSM STATES
+# =========================
 class CAM(StatesGroup):
     x = State()
     y = State()
@@ -14,12 +17,12 @@ class CAM(StatesGroup):
 
 
 # =========================
-# START CAM
+# START CONTUR
 # =========================
-@router.message(F.text == "Контур")
-async def start(message: Message, state: FSMContext):
+@router.message(F.text == "📐 Контур")
+async def start_contour(message: Message, state: FSMContext):
     await state.clear()
-    await message.answer("Введите X:")
+    await message.answer("📐 Введите X:")
     await state.set_state(CAM.x)
 
 
@@ -34,7 +37,7 @@ async def x_step(message: Message, state: FSMContext):
         return await message.answer("❌ Введите число X")
 
     await state.update_data(x=x)
-    await message.answer("Введите Y:")
+    await message.answer("📏 Введите Y:")
     await state.set_state(CAM.y)
 
 
@@ -49,7 +52,7 @@ async def y_step(message: Message, state: FSMContext):
         return await message.answer("❌ Введите число Y")
 
     await state.update_data(y=y)
-    await message.answer("Шаг:")
+    await message.answer("📉 Шаг:")
     await state.set_state(CAM.step)
 
 
@@ -64,7 +67,7 @@ async def step(message: Message, state: FSMContext):
         return await message.answer("❌ Введите шаг")
 
     await state.update_data(step=s)
-    await message.answer("Глубина:")
+    await message.answer("📦 Глубина:")
     await state.set_state(CAM.depth)
 
 
@@ -86,15 +89,18 @@ O1001
 G21
 G90
 
-X{data['x']} Y{data['y']}
-STEP {data['step']}
-DEPTH {d}
+(TOOLPATH)
+X={data['x']}
+Y={data['y']}
+STEP={data['step']}
+DEPTH={d}
 
 G0 Z5
 G1 Z-{d} F100
 
-G1 X{data['x']}
-G1 Y{data['y']}
+G1 X{data['x']} Y0
+G1 X{data['x']} Y{data['y']}
+G1 X0 Y{data['y']}
 G1 X0 Y0
 
 G0 Z5

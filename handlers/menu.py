@@ -6,8 +6,15 @@ router = Router()
 
 @router.message(F.text == "/start")
 async def start(message: Message):
-    await message.answer("🚀 CAM READY", reply_markup=cam_menu)
+    await message.answer(
+        "🚀 CAM CORE READY\nВыберите операцию:",
+        reply_markup=cam_menu
+    )
 
-@router.message(F.text == "Контур")
-async def contour(message: Message):
-    await message.answer("📐 Контур выбран")
+@router.message(F.text == "📚 Справочник")
+async def manual(message: Message):
+    await message.answer("📚 Справочник открыт")
+
+@router.message(F.text == "⚙️ Утилиты")
+async def utils(message: Message):
+    await message.answer("⚙️ Утилиты открыты")
