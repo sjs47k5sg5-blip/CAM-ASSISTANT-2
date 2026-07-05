@@ -1,7 +1,6 @@
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
-
-from .cam_router import router as cam_router
+from services.ui_state import ui_state
 
 router = Router()
 
@@ -10,7 +9,8 @@ main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="📐 Фрезерование")],
         [KeyboardButton(text="🕳 Отверстия")],
-        [KeyboardButton(text="📚 Справочник")]
+        [KeyboardButton(text="📚 Справочник")],
+        [KeyboardButton(text="⚙️ Утилиты")]
     ],
     resize_keyboard=True
 )
@@ -18,9 +18,10 @@ main_menu = ReplyKeyboardMarkup(
 
 @router.message(F.text == "/start")
 async def start(message: Message):
-    await message.answer("CAM Assistant", reply_markup=main_menu)
 
+    ui_state.reset()
 
-@router.message(F.text == "📐 Фрезерование")
-async def milling(message: Message):
-    await message.answer("Выберите операцию ниже ↓")
+    await message.answer(
+        "👋 CAM Assistant Pro",
+        reply_markup=main_menu
+    )
