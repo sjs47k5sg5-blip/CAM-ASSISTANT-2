@@ -1,4 +1,6 @@
-# services/cam_engine.py
+# =========================
+# CAM ENGINE (UNIVERSAL FIX)
+# =========================
 
 def contour(
     x,
@@ -25,7 +27,7 @@ def contour(
         allowance = float(allowance)
         corner_value = float(corner_value)
     except:
-        return "ERROR: BAD INPUT"
+        return "ERROR INPUT"
 
     g.append("G21")
     g.append("G90")
@@ -34,7 +36,7 @@ def contour(
 
     g.append(f"T{int(tool)} M6")
 
-    offset = tool / 2
+    offset = tool / 2.0
 
     x -= offset
     y -= offset
@@ -63,3 +65,10 @@ def contour(
     g.append("M30")
 
     return "\n".join(g)
+
+
+# =========================
+# ALIASES (КРИТИЧНО ВАЖНО)
+# =========================
+
+generate_toolpath = contour
