@@ -158,36 +158,35 @@ def contour_gcode(
 
         lines.append(f"{comp} D{tool:02d}")
 
-        # --- LEAD IN ---
-for cmd in lead_in(
-    p1[0], p1[1],
-    outside=outside,
-    climb=climb,
+        # --- LEAD IN ---#
+        for cmd in lead_in(
+         p1[0], p1[1],
+         outside=outside,
+         climb=climb,
 ):
-    lines.append(cmd)
-
-lines[-1] += f" F{feed}"
+        lines.append(cmd)
+        lines[-1] += f" F{feed}"
 
 # --- MAIN PATH ---
-build_path(
-    lines,
-    (p1, p2, p3, p4),
-    climb,
-    outside,
-    corner_type,
-    corner_select,
-    rough_corner_value,
+        build_path(
+         lines,
+         (p1, p2, p3, p4),
+         climb,
+         outside,
+         corner_type,
+         corner_select,
+         rough_corner_value,
 )
 
 # --- LEAD OUT ---
-for cmd in lead_out(
-    p1[0], p1[1],
-    outside=outside,
-    climb=climb,
+        for cmd in lead_out(
+         p1[0], p1[1],
+         outside=outside,
+         climb=climb,
 ):
-    lines.append(cmd)
-lines.append("G40")
-lines.append("G00 Z5.")
+         lines.append(cmd)
+         lines.append("G40")
+         lines.append("G00 Z5.")
     if finish:
 
         lines.append("")
