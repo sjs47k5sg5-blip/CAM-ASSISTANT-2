@@ -15,8 +15,6 @@ class CamState:
     corner_value: float = 0.0
     corner_scope: str = ""
 
-    ready: bool = False
 
-
-# 💥 ВАЖНО: ЭТО ОБЯЗАТЕЛЬНО ДЛЯ ИМПОРТА
-CAM_MEMORY = {}
+# 💥 ЕДИНЫЙ STORAGE (ВАЖНО)
+CAM_DB = {}
