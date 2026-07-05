@@ -4,92 +4,119 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
 from services.gcode import contour
-from services.engine import build_plan
 
 router = Router()
 
-class S(StatesGroup):
-    x=State()
-    y=State()
-    z=State()
-    allowance=State()
-    feature=State()
-    tool=State()
-    zero=State()
 
-def num(t):
-    try: return float(t)
-    except: return None
+# =========================
+# FSM STATES
+# =========================
+class CAM(StatesGroup):
+    x = State()
+    y = State()
+    step = State()
+    depth = State()
+    zero = State()
 
-@router.message(F.text == "📐 CAM")
-async def start(m: Message, s: FSMContext):
-    await m.answer("X:")
-    await s.set_state(S.x)
 
-@router.message(S.x)
-async def x(m: Message, s: FSMContext):
-    v=num(m.text)
-    if v is None: return await m.answer("err")
-    await s.update_data(x=v)
-    await m.answer("Y:")
-    await s.set_state(S.y)
+# =========================
+# START CAM
+# =========================
+@router.message(F.text == "Контур")
+async def start_cam(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("📐 Введите X:")
+    await state.set_state(CAM.x)
 
-@router.message(S.y)
-async def y(m: Message, s: FSMContext):
-    v=num(m.text)
-    if v is None: return await m.answer("err")
-    await s.update_data(y=v)
-    await m.answer("Z:")
-    await s.set_state(S.z)
 
-@router.message(S.z)
-async def z(m: Message, s: FSMContext):
-    v=num(m.text)
-    if v is None: return await m.answer("err")
-    await s.update_data(z=v)
+# =========================
+# X
+# =========================
+@router.message(CAM.x)
+async def x_handler(message: Message, state: FSMContext):
+    try:
+        x = float(message.text)
+    except:
+        return await message.answer("❌ Введите число X")
+
+    await state.update_data(x=x)
+    await message.answer("📏 Введите Y:")
+    await state.set_state(CAM.y)
+
+
+# =========================
+# Y
+# =========================
+@router.message(CAM.y)
+async def y_handler(message: Message, state: FSMContext):
+    try:
+        y = float(message.text)
+    except:
+        return await message.answer("❌ Введите число Y")
+
+    await state.update_data(y=y)
+    await message.answer("📉 Шаг по глубине:")
+    await state.set_state(CAM.step)
+
+
+# =========================
+# STEP
+# =========================
+@router.message(CAM.step)
+async def step_handler(message: Message, state: FSMContext):
+    try:
+        step = float(message.text)
+    except:
+        return await message.answer("❌ Введите шаг")
+
+    await state.update_data(step=step)
+    await message.answer("📦 Глубина обработки:")
+    await state.set_state(CAM.depth)
+
+
+# =========================
+# DEPTH -> ZERO MODE
+# =========================
+@router.message(CAM.depth)
+async def depth_handler(message: Message, state: FSMContext):
+    try:
+        depth = float(message.text)
+    except:
+        return await message.answer("❌ Введите глубину")
+
+    await state.update_data(depth=depth)
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="ОСТРЫЕ", callback_data="f_sharp")],
-        [InlineKeyboardButton(text="ФАСКА", callback_data="f_chamfer")],
-        [InlineKeyboardButton(text="РАДИУС", callback_data="f_radius")]
+        [InlineKeyboardButton(text="⬆️ Верх детали", callback_data="zero_top")],
+        [InlineKeyboardButton(text="⬇️ Низ детали", callback_data="zero_bottom")]
     ])
 
-    await m.answer("FEATURE:", reply_markup=kb)
-    await s.set_state(S.feature)
+    await message.answer("📍 Выбор нуля:", reply_markup=kb)
+    await state.set_state(CAM.zero)
 
-@router.callback_query(F.data.startswith("f_"))
-async def feature(c: CallbackQuery, s: FSMContext):
-    await c.answer()
-    await s.update_data(feature=c.data)
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="1 инструмент", callback_data="t1")],
-        [InlineKeyboardButton(text="Черновой+Чистовой", callback_data="t2")]
-    ])
+# =========================
+# ZERO MODE
+# =========================
+@router.callback_query(F.data.in_(["zero_top", "zero_bottom"]))
+async def zero_handler(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
 
-    await c.message.answer("TOOL MODE:", reply_markup=kb)
-    await s.set_state(S.tool)
+    data = await state.get_data()
 
-@router.callback_query(F.data.in_(["t1","t2"]))
-async def tool(c: CallbackQuery, s: FSMContext):
-    await c.answer()
-    await s.update_data(tool=c.data)
+    zero = "top" if callback.data == "zero_top" else "bottom"
 
-    await c.message.answer("Припуск:")
-    await s.set_state(S.allowance)
+    gcode = contour(
+        x=data["x"],
+        y=data["y"],
+        z=data["depth"],
+        zero=zero,
+        allowance=0
+    )
 
-@router.message(S.allowance)
-async def allowance(m: Message, s: FSMContext):
-    v=num(m.text)
-    if v is None: return await m.answer("err")
-    await s.update_data(allowance=v)
+    file = BufferedInputFile(gcode.encode(), filename="contour.nc")
 
-    data = await s.get_data()
-    plan = build_plan(data)
+    await callback.message.answer("✅ G-code готов")
+    await callback.message.answer_document(file)
 
-    gcode = contour(data["x"],data["y"],data["z"],"top",data["allowance"])
-
-    file = BufferedInputFile(gcode.encode(), filename="FULL_CAM.nc")
-    await m.answer_document(file, caption="FULL CAM READY")
-
-    await s.clear()
+    await state.clear()
