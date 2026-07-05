@@ -31,7 +31,7 @@ def apply_zero(x, y, mode):
 
 
 # =========================
-# BASE RECTANGLE
+# RECT BASE
 # =========================
 def base_rect(x, y):
 
@@ -45,7 +45,42 @@ def base_rect(x, y):
 
 
 # =========================
-# RADIUS RECT (kept for compatibility)
+# TRUE CHAMFER GEOMETRY (FIXED)
+# =========================
+def chamfer_rect(x, y, c):
+
+    # 🔥 REAL chamfer = CUT CORNERS, NOT OFFSET
+
+    return [
+        # bottom edge + chamfer
+        (c, 0),
+        (x - c, 0),
+
+        # right-bottom chamfer
+        (x, c),
+
+        # right edge
+        (x, y - c),
+
+        # top-right chamfer
+        (x - c, y),
+
+        # top edge
+        (c, y),
+
+        # left-top chamfer
+        (0, y - c),
+
+        # left edge
+        (0, c),
+
+        # close
+        (c, 0)
+    ]
+
+
+# =========================
+# RADIUS GEOMETRY
 # =========================
 def radius_rect(x, y, r):
 
@@ -58,26 +93,6 @@ def radius_rect(x, y, r):
         (r, y),
         (0, y - r),
         (0, 0)
-    ]
-
-
-# =========================
-# CHAMFER CORE (REAL GEOMETRY FIX)
-# =========================
-def chamfer_path(x, y, c):
-
-    # 🔥 REAL chamfer = corner cut with linear segments
-
-    return [
-        (c, 0),         # bottom left chamfer start
-        (x - c, 0),     # bottom edge
-        (x, c),         # bottom-right chamfer
-        (x, y - c),     # right edge
-        (x - c, y),     # top-right chamfer
-        (c, y),         # top edge
-        (0, y - c),     # top-left chamfer
-        (0, c),         # left edge
-        (c, 0)          # close
     ]
 
 
@@ -114,7 +129,7 @@ def arc(p1, p2, r):
 
 
 # =========================
-# MODE SELECTOR (FIXED LOGIC)
+# MODE SELECTOR
 # =========================
 def select_mode(mode, x, y, r):
 
@@ -127,7 +142,7 @@ def select_mode(mode, x, y, r):
         return "ARC", radius_rect(x, y, r), r
 
     elif "ФАСК" in mode:
-        return "CHAMFER", chamfer_path(x, y, r), r
+        return "CHAMFER", chamfer_rect(x, y, r), r
 
     else:
         return "LINE", base_rect(x, y), 0
@@ -182,7 +197,7 @@ def contour(
     yo -= offset_tool
 
     # =========================
-    # AUTO MODE
+    # MODE
     # =========================
     mode, path, used_r = select_mode(corner_type, xo, yo, r)
 
@@ -196,7 +211,7 @@ def contour(
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # ROUGHING (ONLY ONE PATH)
+    # ROUGHING
     # =========================
     z = 0
 
@@ -224,7 +239,7 @@ def contour(
                 g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
 
     # =========================
-    # FINISH PASS (SAFE - NO DUPLICATION)
+    # FINISH (NO DUPLICATION)
     # =========================
     if allowance > 0:
 
