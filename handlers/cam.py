@@ -2,18 +2,21 @@ from aiogram import Router, F
 from aiogram.types import Message, BufferedInputFile
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
+
 from services.cam_engine import contour
-from keyboards.cam_menu import zero_kb
+from keyboards.cam_menu import zero_kb, corner_kb, yes_no_kb
 
 router = Router()
 
 class CAM(StatesGroup):
     tool = State()
     zero = State()
-    size_x = State()
-    size_y = State()
+    x = State()
+    y = State()
     depth = State()
-    feed = State()
+    stepdown = State()
+    allowance = State()
+    corner = State()
 
 @router.message(F.text == "📐 Контур")
 async def start(message: Message, state: FSMContext):
@@ -23,7 +26,7 @@ async def start(message: Message, state: FSMContext):
 
 @router.message(CAM.tool)
 async def tool(message: Message, state: FSMContext):
-    await state.update_data(tool=int(message.text))
+    await state.update_data(tool=float(message.text))
     await message.answer("Выбор нуля:", reply_markup=zero_kb())
     await state.set_state(CAM.zero)
 
@@ -37,37 +40,47 @@ async def zero(message: Message, state: FSMContext):
         "📍 ПН угол": "BR",
     }
     await state.update_data(zero=zmap.get(message.text, "CENTER"))
-    await message.answer("X размер:")
-    await state.set_state(CAM.size_x)
+    await message.answer("X:")
+    await state.set_state(CAM.x)
 
-@router.message(CAM.size_x)
-async def sx(message: Message, state: FSMContext):
-    await state.update_data(sx=float(message.text))
-    await message.answer("Y размер:")
-    await state.set_state(CAM.size_y)
+@router.message(CAM.x)
+async def x(message: Message, state: FSMContext):
+    await state.update_data(x=float(message.text))
+    await message.answer("Y:")
+    await state.set_state(CAM.y)
 
-@router.message(CAM.size_y)
-async def sy(message: Message, state: FSMContext):
-    await state.update_data(sy=float(message.text))
-    await message.answer("Глубина:")
+@router.message(CAM.y)
+async def y(message: Message, state: FSMContext):
+    await state.update_data(y=float(message.text))
+    await message.answer("Depth:")
     await state.set_state(CAM.depth)
 
 @router.message(CAM.depth)
 async def depth(message: Message, state: FSMContext):
     await state.update_data(depth=float(message.text))
-    await message.answer("Подача:")
-    await state.set_state(CAM.feed)
+    await message.answer("Stepdown:")
+    await state.set_state(CAM.stepdown)
 
-@router.message(CAM.feed)
-async def feed(message: Message, state: FSMContext):
+@router.message(CAM.stepdown)
+async def stepdown(message: Message, state: FSMContext):
+    await state.update_data(stepdown=float(message.text))
+    await message.answer("Allowance (0/1):")
+    await state.set_state(CAM.allowance)
+
+@router.message(CAM.allowance)
+async def allowance(message: Message, state: FSMContext):
+    await state.update_data(allowance=float(message.text))
+    await message.answer("Corner:", reply_markup=corner_kb())
+    await state.set_state(CAM.corner)
+
+@router.message(CAM.corner)
+async def corner(message: Message, state: FSMContext):
     data = await state.get_data()
 
     gcode = contour(
-        data["sx"], data["sy"],
-        data["depth"], float(message.text),
-        data["tool"],
-        data["zero"],
-        data["sx"], data["sy"]
+        data["x"], data["y"], data["depth"], data["stepdown"],
+        data["tool"], data["zero"], data["allowance"],
+        data["stepdown"], message.text
     )
 
     file = BufferedInputFile(gcode.encode(), filename="cam.nc")

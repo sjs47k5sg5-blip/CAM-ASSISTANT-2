@@ -6,4 +6,4 @@ router = Router()
 
 @router.message(F.text == "/start")
 async def start(message: Message):
-    await message.answer("🚀 CAM PRO V16 ZERO ENGINE", reply_markup=cam_menu)
+    await message.answer("🚀 CAM CORE FINAL (MERGED)", reply_markup=cam_menu)
