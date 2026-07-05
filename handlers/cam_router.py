@@ -7,6 +7,7 @@ from services.contour_gcode import contour_gcode
 
 router = Router()
 
+
 class CAMState(StatesGroup):
     x = State()
     y = State()
@@ -22,71 +23,81 @@ def safe_float(text: str):
         return None
 
 
+# START
 @router.callback_query(F.data == "cam_contour")
-async def start(c: CallbackQuery, state: FSMContext):
-    await c.answer()
+async def start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
     await state.clear()
-    await c.message.answer("Введите X:")
+    await callback.message.answer("Введите X:")
     await state.set_state(CAMState.x)
 
 
+# X
 @router.message(CAMState.x)
-async def x(m: Message, s: FSMContext):
-    val = safe_float(m.text)
+async def x(message: Message, state: FSMContext):
+
+    val = safe_float(message.text)
     if val is None:
-        await m.answer("❌ Введи число")
-        return
-    await s.update_data(x=val)
-    await m.answer("Введите Y:")
-    await s.set_state(CAMState.y)
+        return await message.answer("❌ Введите число")
+
+    await state.update_data(x=val)
+    await message.answer("Введите Y:")
+    await state.set_state(CAMState.y)
 
 
+# Y
 @router.message(CAMState.y)
-async def y(m: Message, s: FSMContext):
-    val = safe_float(m.text)
+async def y(message: Message, state: FSMContext):
+
+    val = safe_float(message.text)
     if val is None:
-        await m.answer("❌ Введи число")
-        return
-    await s.update_data(y=val)
-    await m.answer("STEP:")
-    await s.set_state(CAMState.step)
+        return await message.answer("❌ Введите число")
+
+    await state.update_data(y=val)
+    await message.answer("Шаг (STEP):")
+    await state.set_state(CAMState.step)
 
 
+# STEP
 @router.message(CAMState.step)
-async def step(m: Message, s: FSMContext):
-    val = safe_float(m.text)
+async def step(message: Message, state: FSMContext):
+
+    val = safe_float(message.text)
     if val is None:
-        await m.answer("❌ Введи число")
-        return
-    await s.update_data(step=val)
-    await m.answer("DEPTH:")
-    await s.set_state(CAMState.depth)
+        return await message.answer("❌ Введите число")
+
+    await state.update_data(step=val)
+    await message.answer("Глубина (DEPTH):")
+    await state.set_state(CAMState.depth)
 
 
+# DEPTH
 @router.message(CAMState.depth)
-async def depth(m: Message, s: FSMContext):
-    val = safe_float(m.text)
-    if val is None:
-        await m.answer("❌ Введи число")
-        return
+async def depth(message: Message, state: FSMContext):
 
-    await s.update_data(depth=val)
+    val = safe_float(message.text)
+    if val is None:
+        return await message.answer("❌ Введите число")
+
+    await state.update_data(depth=val)
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⬆️ TOP", callback_data="z_top")],
         [InlineKeyboardButton(text="⬇️ BOTTOM", callback_data="z_bottom")]
     ])
 
-    await m.answer("ZERO MODE:", reply_markup=kb)
-    await s.set_state(CAMState.zero)
+    await message.answer("ZERO MODE:", reply_markup=kb)
+    await state.set_state(CAMState.zero)
 
 
+# ZERO + GENERATE
 @router.callback_query(F.data.in_(["z_top", "z_bottom"]))
-async def zero(c: CallbackQuery, s: FSMContext):
-    await c.answer()
+async def zero(callback: CallbackQuery, state: FSMContext):
 
-    data = await s.get_data()
-    zero = "top" if c.data == "z_top" else "bottom"
+    await callback.answer()
+
+    data = await state.get_data()
+    zero = "top" if callback.data == "z_top" else "bottom"
 
     gcode = contour_gcode(
         data["x"],
@@ -96,5 +107,11 @@ async def zero(c: CallbackQuery, s: FSMContext):
         zero
     )
 
-    await c.message.answer_document(gcode.encode(), caption="SAFE CAM v7.1")
-    await s.clear()
+    await callback.message.answer("✅ G-code готов")
+
+    await callback.message.answer_document(
+        document=gcode.encode("utf-8"),
+        caption="CAM FIXED WORKING"
+    )
+
+    await state.clear()
