@@ -15,7 +15,7 @@ def build_path(
     corner_value,
 ):
 
-    # Порядок обхода
+    # порядок обхода
     if climb:
         order = list(points)
     else:
@@ -32,134 +32,96 @@ def build_path(
         (not outside and not climb)
     )
 
-    arc = "G02" if clockwise else "G03"
+    arc_cmd = "G02" if clockwise else "G03"
 
-    count = len(order)
+    n = len(order)
 
-    for i in range(count):
+    # стартовая точка
+    first = order[0]
 
-        prev = order[(i - 1) % count]
+    # первый переход в точку старта
+    lines.append(
+        f"G01 X{first[0]:.3f} Y{first[1]:.3f}"
+    )
+
+    for i in range(n):
+
+        prev = order[i - 1]
         cur = order[i]
-        nxt = order[(i + 1) % count]
+        nxt = order[(i + 1) % n]
 
         use_corner = (
             corner_type != "none"
             and corner_value > 0
-            and corner_enabled(
-                i + 1,
-                corner_select,
-            )
+            and corner_enabled(i + 1, corner_select)
         )
 
-        if use_corner:
-
-            if corner_type == "chamfer":
-
-                start, end = chamfer_points(
-                    prev,
-                    cur,
-                    nxt,
-                    corner_value,
-                )
-
-            else:
-
-                start, end, center = radius_arc(
-                    prev,
-                    cur,
-                    nxt,
-                    corner_value,
-                )
-        else:
-
-            start = cur
-            end = cur
-        # Первый элемент траектории
-        if i == 0:
-
-            if use_corner:
-                lines.append(
-                    f"G01 X{start[0]:.3f} "
-                    f"Y{start[1]:.3f}"
-                )
-            else:
-                lines.append(
-                    f"G01 X{cur[0]:.3f} "
-                    f"Y{cur[1]:.3f}"
-                )
-
-        if i > 0:
-
-            target = start if use_corner else cur
-
-            lines.append(
-                f"G01 X{target[0]:.3f} "
-                f"Y{target[1]:.3f}"
-            )
-
-                
-         # Строим фаску
+        # --------------------------
+        # ФАСКА
+        # --------------------------
         if use_corner and corner_type == "chamfer":
 
-            lines.append(
-                f"G01 X{end[0]:.3f} "
-                f"Y{end[1]:.3f}"
+            start, end = chamfer_points(
+                prev,
+                cur,
+                nxt,
+                corner_value,
             )
 
-        # Строим радиус
-        elif use_corner and corner_type == "radius":
-
-            offset_i = center[0] - start[0]
-            offset_j = center[1] - start[1]
-
+            # линия до фаски
             lines.append(
-                f"{arc} "
+                f"G01 X{start[0]:.3f} Y{start[1]:.3f}"
+            )
+
+            # фаска
+            lines.append(
+                f"G01 X{end[0]:.3f} Y{end[1]:.3f}"
+            )
+
+            continue
+
+        # --------------------------
+        # РАДИУС (I/J)
+        # --------------------------
+        if use_corner and corner_type == "radius":
+
+            start, end, center = radius_arc(
+                prev,
+                cur,
+                nxt,
+                corner_value,
+            )
+
+            # центр дуги
+            i_off = center[0] - start[0]
+            j_off = center[1] - start[1]
+
+            # подвод к дуге
+            lines.append(
+                f"G01 X{start[0]:.3f} Y{start[1]:.3f}"
+            )
+
+            # дуга I/J
+            lines.append(
+                f"{arc_cmd} "
                 f"X{end[0]:.3f} "
                 f"Y{end[1]:.3f} "
-                f"I{offset_i:.3f} "
-                f"J{offset_j:.3f}"
+                f"I{i_off:.3f} "
+                f"J{j_off:.3f}"
             )
 
-    # Замыкаем контур
-    first = order[0]
+            continue
 
-    first_enabled = (
-        corner_type != "none"
-        and corner_value > 0
-        and corner_enabled(
-            1,
-            corner_select,
+        # --------------------------
+        # ОБЫЧНАЯ ЛИНИЯ
+        # --------------------------
+        lines.append(
+            f"G01 X{cur[0]:.3f} Y{cur[1]:.3f}"
         )
+
+    # замыкание контура
+    lines.append(
+        f"G01 X{first[0]:.3f} Y{first[1]:.3f}"
     )
 
-    if first_enabled:
-
-        prev = order[-1]
-        nxt = order[1]
-
-        if corner_type == "chamfer":
-            start, _ = chamfer_points(
-                prev,
-                first,
-                nxt,
-                corner_value,
-            )
-        else:
-            start, _, _ = radius_arc(
-                prev,
-                first,
-                nxt,
-                corner_value,
-            )
-
-        lines.append(
-            f"G01 X{start[0]:.3f} "
-            f"Y{start[1]:.3f}"
-        )
-
-    else:
-
-        lines.append(
-            f"G01 X{first[0]:.3f} "
-            f"Y{first[1]:.3f}"
-        )
+    return lines
