@@ -13,50 +13,21 @@ def _offset_point(x, y, dx, dy, dist):
     return x + nx * dist, y + ny * dist
 
 
-def lead_in(
-    x: float,
-    y: float,
-    radius: float = 5.0,
-    outside: bool = True,
-    climb: bool = True,
-):
+def lead_in(x, y, radius=5.0, outside=True, climb=True):
 
-    # направление дуги
-    if outside:
-        clockwise = not climb
-    else:
-        clockwise = climb
-
-    arc = "G02" if clockwise else "G03"
-
-    # точка подхода (слева от точки)
     start_x = x - radius
     start_y = y
 
-    # центр дуги (I/J)
     i = start_x - x
     j = start_y - y
 
     return [
         f"G01 X{start_x:.3f} Y{start_y:.3f}",
-        f"{arc} X{x:.3f} Y{y:.3f} I{i:.3f} J{j:.3f}",
+        f"G02 X{x:.3f} Y{y:.3f} I{i:.3f} J{j:.3f}",
     ]
 
 
-def lead_out(
-    x: float,
-    y: float,
-    radius: float = 5.0,
-    outside: bool = True,
-    climb: bool = True,
-):
-
-    if outside:
-        clockwise = climb
-    else:
-        clockwise = not climb
-
-    arc = "G02" if clockwise else "G03"
+def lead_out(x, y, radius=5.0, outside=True, climb=True):
 
     end_x = x - radius
     end_y = y
@@ -65,6 +36,6 @@ def lead_out(
     j = y - end_y
 
     return [
-        f"{arc} X{end_x:.3f} Y{end_y:.3f} I{i:.3f} J{j:.3f}",
+        f"G03 X{end_x:.3f} Y{end_y:.3f} I{i:.3f} J{j:.3f}",
         "G40",
     ]
