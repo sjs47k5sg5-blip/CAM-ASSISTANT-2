@@ -2,8 +2,8 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 cam_menu = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="📐 Контур")],
-        [KeyboardButton(text="📚 Справочник")]
+        [KeyboardButton(text="📐 Контур"), KeyboardButton(text="🟦 Карман")],
+        [KeyboardButton(text="🛠 Инструменты"), KeyboardButton(text="📚 Справочник")]
     ],
     resize_keyboard=True
 )
