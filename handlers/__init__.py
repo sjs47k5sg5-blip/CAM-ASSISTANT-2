@@ -3,9 +3,7 @@ from aiogram import Dispatcher
 from .back import router as back_router
 from .start import router as start_router
 
-from .milling import router as milling_router
 from .face import router as face_router
-from .contour import router as contour_router
 
 from .drilling import router as drilling_router
 from .threading import router as threading_router
