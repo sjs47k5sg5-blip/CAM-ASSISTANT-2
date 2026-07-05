@@ -31,12 +31,9 @@ def apply_zero(x, y, mode):
 
 
 # =========================
-# GEOMETRY CORE (OFFSET POINTS)
+# RECT BASE
 # =========================
-def build_geometry(x, y, r):
-
-    # чистая математика CAM (как Fusion kernel)
-
+def rect(x, y, r):
     return [
         (r, 0),
         (x - r, 0),
@@ -50,7 +47,7 @@ def build_geometry(x, y, r):
 
 
 # =========================
-# ARC BUILDER (REAL I/J)
+# ARC (SAFE I/J)
 # =========================
 def arc(p1, p2, r):
 
@@ -82,7 +79,21 @@ def arc(p1, p2, r):
 
 
 # =========================
-# MAIN CAM ENGINE
+# TOOLPATH SELECTOR (CRITICAL FIX)
+# =========================
+def build_path(x, y, r, mode):
+
+    # 🔥 FIX: only ONE active path (no duplication)
+
+    if mode == "РАДИУС":
+        return rect(x, y, r), "ARC"
+
+    else:
+        return rect(x, y, r), "LINE"
+
+
+# =========================
+# MAIN ENGINE
 # =========================
 def contour(
     x,
@@ -121,7 +132,7 @@ def contour(
     g.append("G0 Z5")
 
     # =========================
-    # APPLY ZERO
+    # ZERO APPLY
     # =========================
     xo, yo = apply_zero(x, y, zero)
 
@@ -129,22 +140,22 @@ def contour(
     xo -= offset
     yo -= offset
 
-    g.append(f"(ZERO={zero})")
-    g.append(f"(RADIUS={r})")
+    g.append(f"(MODE={corner_type})")
+    g.append(f"(R={r})")
 
     # =========================
-    # BUILD GEOMETRY ONCE (IMPORTANT FIX)
+    # SINGLE PATH ONLY (IMPORTANT FIX)
     # =========================
-    geo = build_geometry(xo, yo, r)
+    path, mode = build_path(xo, yo, r, corner_type)
 
     # =========================
-    # START POINT
+    # START
     # =========================
-    sx, sy = geo[0]
+    sx, sy = path[0]
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # ROUGHING
+    # ROUGHING (ONLY ONCE)
     # =========================
     z = 0
 
@@ -155,32 +166,32 @@ def contour(
 
         g.append(f"G1 Z{z:.3f} F120")
 
-        for p in geo:
+        for p in path:
             g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
 
     # =========================
-    # RADIUS MODE (REAL GEOMETRY)
+    # TOOLPATH EXECUTION (NO DUPLICATE)
     # =========================
-    if corner_type == "РАДИУС":
+    if mode == "ARC":
 
-        g.append("(GEOMETRY RADIUS MODE)")
+        g.append("(CLEAN ARC MODE - NO DUPLICATES)")
 
-        for i in range(len(geo) - 1):
-            cmd = arc(geo[i], geo[i + 1], r)
+        for i in range(len(path) - 1):
+            cmd = arc(path[i], path[i + 1], r)
             if cmd:
                 g.append(cmd)
 
-        cmd = arc(geo[-1], geo[0], r)
+        cmd = arc(path[-1], path[0], r)
         if cmd:
             g.append(cmd)
 
     # =========================
-    # FINISH PASS
+    # FINISH PASS (ONLY IF ALLOWANCE)
     # =========================
     if allowance > 0:
-        g.append("(FINISH PASS)")
+        g.append("(FINISH ONLY)")
 
-        for p in geo:
+        for p in path:
             g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
 
     # =========================
