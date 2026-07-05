@@ -3,11 +3,10 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 
 router = Router()
 
-
 # =========================
-# MAIN MENU KEYBOARD
+# MAIN MENU
 # =========================
-def main_menu_kb():
+def main_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📐 Контур")],
@@ -18,24 +17,20 @@ def main_menu_kb():
 
 
 # =========================
-# START COMMAND (FIXED)
+# START (LOCKED)
 # =========================
 @router.message(F.text == "/start")
 async def start(message: Message):
 
     await message.answer(
-        "🚀 CAM PRO READY\n\nВыберите функцию из меню ниже:",
-        reply_markup=main_menu_kb()
+        "🚀 CAM PRO READY\nВыберите функцию:",
+        reply_markup=main_menu()
     )
 
 
 # =========================
-# BACKUP ENTRY (если пользователь пишет CAM)
+# SAFETY: ignore CAM echo duplicates
 # =========================
-@router.message(F.text.in_(["CAM", "cam", "📐 Контур"]))
-async def open_cam(message: Message):
-
-    await message.answer(
-        "📐 CAM модуль активирован\nИспользуйте кнопку Контур ниже",
-        reply_markup=main_menu_kb()
-    )
+@router.message(F.text.in_(["CAM PRO READY", "CAM модуль активирован"]))
+async def ignore_duplicates(message: Message):
+    return
