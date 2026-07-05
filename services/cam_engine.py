@@ -31,9 +31,23 @@ def apply_zero(x, y, mode):
 
 
 # =========================
-# BASE GEOMETRY
+# BASE RECTANGLE
 # =========================
-def base_path(x, y, r):
+def base_rect(x, y):
+
+    return [
+        (0, 0),
+        (x, 0),
+        (x, y),
+        (0, y),
+        (0, 0)
+    ]
+
+
+# =========================
+# RADIUS RECT (kept for compatibility)
+# =========================
+def radius_rect(x, y, r):
 
     return [
         (r, 0),
@@ -48,7 +62,27 @@ def base_path(x, y, r):
 
 
 # =========================
-# ARC BUILDER
+# CHAMFER CORE (REAL GEOMETRY FIX)
+# =========================
+def chamfer_path(x, y, c):
+
+    # 🔥 REAL chamfer = corner cut with linear segments
+
+    return [
+        (c, 0),         # bottom left chamfer start
+        (x - c, 0),     # bottom edge
+        (x, c),         # bottom-right chamfer
+        (x, y - c),     # right edge
+        (x - c, y),     # top-right chamfer
+        (c, y),         # top edge
+        (0, y - c),     # top-left chamfer
+        (0, c),         # left edge
+        (c, 0)          # close
+    ]
+
+
+# =========================
+# ARC GENERATOR
 # =========================
 def arc(p1, p2, r):
 
@@ -80,54 +114,27 @@ def arc(p1, p2, r):
 
 
 # =========================
-# ROUGH TOOLPATH (DEPTH BASED)
+# MODE SELECTOR (FIXED LOGIC)
 # =========================
-def rough_pass(path, depth, stepdown):
+def select_mode(mode, x, y, r):
 
-    g = []
-    z = 0
+    mode = (mode or "").upper()
 
-    while z > -depth:
-        z -= stepdown
-        if z < -depth:
-            z = -depth
+    if "ОСТР" in mode:
+        return "LINE", base_rect(x, y), 0
 
-        g.append(f"G1 Z{z:.3f} F120")
+    elif "РАДИ" in mode:
+        return "ARC", radius_rect(x, y, r), r
 
-        for p in path:
-            g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
-
-    return g
-
-
-# =========================
-# FINISH TOOLPATH (SINGLE PASS ONLY)
-# =========================
-def finish_pass(path, corner_type, r):
-
-    g = []
-
-    if corner_type == "РАДИУС":
-
-        for i in range(len(path) - 1):
-            cmd = arc(path[i], path[i + 1], r)
-            if cmd:
-                g.append(cmd)
-
-        cmd = arc(path[-1], path[0], r)
-        if cmd:
-            g.append(cmd)
+    elif "ФАСК" in mode:
+        return "CHAMFER", chamfer_path(x, y, r), r
 
     else:
-
-        for p in path:
-            g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
-
-    return g
+        return "LINE", base_rect(x, y), 0
 
 
 # =========================
-# MAIN ENGINE (FINAL ARCH FIX)
+# MAIN ENGINE
 # =========================
 def contour(
     x,
@@ -166,7 +173,7 @@ def contour(
     g.append("G0 Z5")
 
     # =========================
-    # ZERO
+    # ZERO APPLY
     # =========================
     xo, yo = apply_zero(x, y, zero)
 
@@ -174,13 +181,13 @@ def contour(
     xo -= offset_tool
     yo -= offset_tool
 
-    g.append(f"(MODE={corner_type})")
-    g.append(f"(R={r})")
+    # =========================
+    # AUTO MODE
+    # =========================
+    mode, path, used_r = select_mode(corner_type, xo, yo, r)
 
-    # =========================
-    # TOOLPATH (ONLY ONCE)
-    # =========================
-    path = base_path(xo, yo, r)
+    g.append(f"(MODE={mode})")
+    g.append(f"(R={used_r})")
 
     # =========================
     # START
@@ -189,22 +196,60 @@ def contour(
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # ROUGHING (ONLY HERE)
+    # ROUGHING (ONLY ONE PATH)
     # =========================
-    g += rough_pass(path, depth, stepdown)
+    z = 0
+
+    while z > -depth:
+        z -= stepdown
+        if z < -depth:
+            z = -depth
+
+        g.append(f"G1 Z{z:.3f} F120")
+
+        if mode == "ARC":
+
+            for i in range(len(path) - 1):
+                cmd = arc(path[i], path[i + 1], used_r)
+                if cmd:
+                    g.append(cmd)
+
+            cmd = arc(path[-1], path[0], used_r)
+            if cmd:
+                g.append(cmd)
+
+        else:
+
+            for p in path:
+                g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
 
     # =========================
-    # SAFE RETRACT BEFORE FINISH
-    # =========================
-    g.append("G0 Z5")
-
-    # =========================
-    # FINISH (SEPARATE SINGLE PASS)
+    # FINISH PASS (SAFE - NO DUPLICATION)
     # =========================
     if allowance > 0:
-        g.append("(FINISH PASS SINGLE)")
 
-        g += finish_pass(path, corner_type, r)
+        g.append("(FINISH PASS)")
+
+        if mode == "CHAMFER":
+
+            for p in path:
+                g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
+
+        elif mode == "ARC":
+
+            for i in range(len(path) - 1):
+                cmd = arc(path[i], path[i + 1], used_r)
+                if cmd:
+                    g.append(cmd)
+
+            cmd = arc(path[-1], path[0], used_r)
+            if cmd:
+                g.append(cmd)
+
+        else:
+
+            for p in path:
+                g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
 
     # =========================
     # SAFE EXIT
