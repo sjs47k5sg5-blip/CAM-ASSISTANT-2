@@ -4,13 +4,13 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
 from services.cam_engine import contour
-from keyboards.cam_menu import zero_kb, corner_kb, allowance_kb
+from keyboards.cam_menu import zero_kb, corner_kb, allowance_kb, corner_select_kb
 
 router = Router()
 
 
 # =========================
-# FSM
+# FSM STATES
 # =========================
 class CAM(StatesGroup):
     tool = State()
@@ -26,6 +26,8 @@ class CAM(StatesGroup):
 
     corner = State()
     corner_value = State()
+
+    corner_select = State()   # 🔥 FIX ADDED
 
 
 # =========================
@@ -162,7 +164,7 @@ async def corner(message: Message, state: FSMContext):
         return
 
     await state.update_data(corner_value=0)
-    await build(message, state)
+    await ask_corner_select(message, state)
 
 
 # =========================
@@ -176,11 +178,48 @@ async def corner_value(message: Message, state: FSMContext):
     except:
         return await message.answer("Введите число")
 
+    await ask_corner_select(message, state)
+
+
+# =========================
+# CORNER SELECT (NEW FIX)
+# =========================
+async def ask_corner_select(message: Message, state: FSMContext):
+
+    await message.answer(
+        "Какие углы обрабатывать?",
+        reply_markup=corner_select_kb()
+    )
+
+    await state.set_state(CAM.corner_select)
+
+
+# =========================
+# CORNER SELECT HANDLER
+# =========================
+@router.message(CAM.corner_select)
+async def corner_select(message: Message, state: FSMContext):
+
+    map_angles = {
+        "Все": "ALL",
+        "ЛВ": "TL",
+        "ПВ": "TR",
+        "ЛН": "BL",
+        "ПН": "BR",
+    }
+
+    value = map_angles.get(message.text)
+
+    if value is None:
+        return await message.answer("Выберите кнопками")
+
+    await state.update_data(corner_zone=value)
+
     await build(message, state)
 
 
 # =========================
-# BUILD G-CODE
+# BUILD GCODE
 # =========================
 async def build(message: Message, state: FSMContext):
 
