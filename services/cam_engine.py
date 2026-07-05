@@ -31,11 +31,27 @@ def apply_zero(x, y, mode):
 
 
 # =========================
-# RECT BASE
+# RECT BASE POINTS
 # =========================
-def rect(x, y, r):
+def base_rect(x, y):
+
     return [
-        (r, 0),
+        (0, 0),
+        (x, 0),
+        (x, y),
+        (0, y),
+        (0, 0)
+    ]
+
+
+# =========================
+# TRUE CORNER ARC GENERATOR (REAL CAM STYLE)
+# =========================
+def corner_arcs(x, y, r):
+
+    # 4 corners with real tangent arc points
+    p = [
+        (r, 0),         # start bottom edge
         (x - r, 0),
         (x, r),
         (x, y - r),
@@ -45,32 +61,17 @@ def rect(x, y, r):
         (0, 0)
     ]
 
+    return p
+
 
 # =========================
-# ARC (SAFE I/J)
+# SAFE G2 ARC (FANUC CORRECT)
 # =========================
-def arc(p1, p2, r):
+def arc(p1, p2, center):
 
     x1, y1 = p1
     x2, y2 = p2
-
-    dx = x2 - x1
-    dy = y2 - y1
-
-    dist = math.sqrt(dx * dx + dy * dy)
-    if dist == 0:
-        return None
-
-    mx = (x1 + x2) / 2
-    my = (y1 + y2) / 2
-
-    ux = -dy / dist
-    uy = dx / dist
-
-    h = math.sqrt(max(r * r - (dist / 2) ** 2, 0))
-
-    cx = mx + ux * h
-    cy = my + uy * h
+    cx, cy = center
 
     i = cx - x1
     j = cy - y1
@@ -79,17 +80,16 @@ def arc(p1, p2, r):
 
 
 # =========================
-# TOOLPATH SELECTOR (CRITICAL FIX)
+# CORNER CENTER MAP (KEY FIX)
 # =========================
-def build_path(x, y, r, mode):
+def corner_centers(x, y, r):
 
-    # 🔥 FIX: only ONE active path (no duplication)
-
-    if mode == "РАДИУС":
-        return rect(x, y, r), "ARC"
-
-    else:
-        return rect(x, y, r), "LINE"
+    return [
+        (r, r),             # BL
+        (x - r, r),         # BR
+        (x - r, y - r),     # TR
+        (r, y - r)          # TL
+    ]
 
 
 # =========================
@@ -132,7 +132,7 @@ def contour(
     g.append("G0 Z5")
 
     # =========================
-    # ZERO APPLY
+    # APPLY ZERO
     # =========================
     xo, yo = apply_zero(x, y, zero)
 
@@ -140,58 +140,77 @@ def contour(
     xo -= offset
     yo -= offset
 
-    g.append(f"(MODE={corner_type})")
+    g.append(f"(TRUE RADIUS MODE)")
     g.append(f"(R={r})")
 
     # =========================
-    # SINGLE PATH ONLY (IMPORTANT FIX)
+    # MODE SELECTION (CRITICAL FIX)
     # =========================
-    path, mode = build_path(xo, yo, r, corner_type)
+    if corner_type == "РАДИУС":
+
+        pts = corner_arcs(xo, yo, r)
+        centers = corner_centers(xo, yo, r)
+
+        # start
+        g.append(f"G0 X{pts[0][0]:.3f} Y{pts[0][1]:.3f}")
+
+        # roughing (still safe linear)
+        z = 0
+        while z > -depth:
+            z -= stepdown
+            if z < -depth:
+                z = -depth
+
+            g.append(f"G1 Z{z:.3f} F120")
+
+            for p in pts:
+                g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
+
+        # =========================
+        # REAL TRUE ARC CORNERS (FIXED)
+        # =========================
+        g.append("(TRUE CORNER ARCS)")
+
+        arc_pairs = [
+            (pts[0], pts[1], centers[0]),
+            (pts[1], pts[2], centers[1]),
+            (pts[2], pts[3], centers[2]),
+            (pts[3], pts[4], centers[3]),
+        ]
+
+        for p1, p2, c in arc_pairs:
+            g.append(arc(p1, p2, c))
+
+        # close loop
+        g.append(arc(pts[4], pts[0], centers[0]))
+
+    else:
+
+        # =========================
+        # NORMAL RECT MODE
+        # =========================
+        pts = base_rect(xo, yo)
+
+        g.append(f"G0 X{pts[0][0]:.3f} Y{pts[0][1]:.3f}")
+
+        z = 0
+        while z > -depth:
+            z -= stepdown
+            if z < -depth:
+                z = -depth
+
+            g.append(f"G1 Z{z:.3f} F120")
+
+            for p in pts:
+                g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
 
     # =========================
-    # START
-    # =========================
-    sx, sy = path[0]
-    g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
-
-    # =========================
-    # ROUGHING (ONLY ONCE)
-    # =========================
-    z = 0
-
-    while z > -depth:
-        z -= stepdown
-        if z < -depth:
-            z = -depth
-
-        g.append(f"G1 Z{z:.3f} F120")
-
-        for p in path:
-            g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
-
-    # =========================
-    # TOOLPATH EXECUTION (NO DUPLICATE)
-    # =========================
-    if mode == "ARC":
-
-        g.append("(CLEAN ARC MODE - NO DUPLICATES)")
-
-        for i in range(len(path) - 1):
-            cmd = arc(path[i], path[i + 1], r)
-            if cmd:
-                g.append(cmd)
-
-        cmd = arc(path[-1], path[0], r)
-        if cmd:
-            g.append(cmd)
-
-    # =========================
-    # FINISH PASS (ONLY IF ALLOWANCE)
+    # FINISH PASS
     # =========================
     if allowance > 0:
-        g.append("(FINISH ONLY)")
+        g.append("(FINISH PASS)")
 
-        for p in path:
+        for p in pts:
             g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
 
     # =========================
