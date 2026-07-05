@@ -2,7 +2,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
 # =========================
-# ГЛАВНОЕ МЕНЮ
+# MAIN MENU
 # =========================
 cam_menu = ReplyKeyboardMarkup(
     keyboard=[
@@ -14,7 +14,7 @@ cam_menu = ReplyKeyboardMarkup(
 
 
 # =========================
-# ВЫБОР НУЛЯ ДЕТАЛИ
+# ZERO
 # =========================
 def zero_kb():
     return ReplyKeyboardMarkup(
@@ -28,19 +28,7 @@ def zero_kb():
 
 
 # =========================
-# ДА / НЕТ
-# =========================
-def yes_no_kb():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="ДА"), KeyboardButton(text="НЕТ")]
-        ],
-        resize_keyboard=True
-    )
-
-
-# =========================
-# УГЛЫ ОБРАБОТКИ
+# CORNER
 # =========================
 def corner_kb():
     return ReplyKeyboardMarkup(
@@ -53,14 +41,14 @@ def corner_kb():
 
 
 # =========================
-# ЗОНЫ УГЛОВ
+# ALLOWANCE (NEW BUTTON SYSTEM)
 # =========================
-def corner_zone_kb():
+def allowance_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="ВСЕ")],
-            [KeyboardButton(text="ЛВ"), KeyboardButton(text="ПВ")],
-            [KeyboardButton(text="ЛН"), KeyboardButton(text="ПН")]
+            [KeyboardButton(text="0 mm")],
+            [KeyboardButton(text="0.1 mm"), KeyboardButton(text="0.2 mm")],
+            [KeyboardButton(text="0.5 mm"), KeyboardButton(text="1.0 mm")]
         ],
         resize_keyboard=True
     )

@@ -3,12 +3,15 @@ from aiogram.types import Message, BufferedInputFile
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
-from services.cam_engine import generate_toolpath
-from keyboards.cam_menu import zero_kb, corner_kb
+from services.cam_engine import contour
+from keyboards.cam_menu import zero_kb, corner_kb, allowance_kb
 
 router = Router()
 
 
+# =========================
+# FSM STATES
+# =========================
 class CAM(StatesGroup):
     tool = State()
     zero = State()
@@ -25,6 +28,9 @@ class CAM(StatesGroup):
     corner_value = State()
 
 
+# =========================
+# START
+# =========================
 @router.message(F.text == "📐 Контур")
 async def start(message: Message, state: FSMContext):
     await state.clear()
@@ -32,13 +38,30 @@ async def start(message: Message, state: FSMContext):
     await state.set_state(CAM.tool)
 
 
+# =========================
+# TOOL
+# =========================
 @router.message(CAM.tool)
 async def tool(message: Message, state: FSMContext):
-    await state.update_data(tool=float(message.text))
-    await message.answer("Выбор нуля:", reply_markup=zero_kb())
+
+    try:
+        tool = float(message.text)
+    except:
+        return await message.answer("Введите число (например 10)")
+
+    await state.update_data(tool=tool)
+
+    await message.answer(
+        "Выбор нуля детали:",
+        reply_markup=zero_kb()
+    )
+
     await state.set_state(CAM.zero)
 
 
+# =========================
+# ZERO
+# =========================
 @router.message(CAM.zero)
 async def zero(message: Message, state: FSMContext):
 
@@ -52,52 +75,107 @@ async def zero(message: Message, state: FSMContext):
 
     await state.update_data(zero=zmap.get(message.text, "CENTER"))
 
-    await message.answer("X:")
+    await message.answer("X размер:")
     await state.set_state(CAM.x)
 
 
+# =========================
+# X
+# =========================
 @router.message(CAM.x)
 async def x(message: Message, state: FSMContext):
-    await state.update_data(x=float(message.text))
-    await message.answer("Y:")
+
+    try:
+        await state.update_data(x=float(message.text))
+    except:
+        return await message.answer("Введите число")
+
+    await message.answer("Y размер:")
     await state.set_state(CAM.y)
 
 
+# =========================
+# Y
+# =========================
 @router.message(CAM.y)
 async def y(message: Message, state: FSMContext):
-    await state.update_data(y=float(message.text))
-    await message.answer("Depth:")
+
+    try:
+        await state.update_data(y=float(message.text))
+    except:
+        return await message.answer("Введите число")
+
+    await message.answer("Глубина:")
     await state.set_state(CAM.depth)
 
 
+# =========================
+# DEPTH
+# =========================
 @router.message(CAM.depth)
 async def depth(message: Message, state: FSMContext):
+
     await state.update_data(depth=float(message.text))
-    await message.answer("Stepdown:")
+
+    await message.answer("Шаг по глубине:")
     await state.set_state(CAM.stepdown)
 
 
+# =========================
+# STEPDOWN → ALLOWANCE (BUTTONS)
+# =========================
 @router.message(CAM.stepdown)
 async def stepdown(message: Message, state: FSMContext):
+
     await state.update_data(stepdown=float(message.text))
-    await message.answer("Allowance (0 if none):")
+
+    await message.answer(
+        "Выберите припуск:",
+        reply_markup=allowance_kb()
+    )
+
     await state.set_state(CAM.allowance)
 
 
+# =========================
+# ALLOWANCE (BUTTON FIX)
+# =========================
 @router.message(CAM.allowance)
 async def allowance(message: Message, state: FSMContext):
-    await state.update_data(allowance=float(message.text))
-    await message.answer("Corner type: ФАСКА / РАДИУС / ОСТРЫЕ")
+
+    map_allow = {
+        "0 mm": 0.0,
+        "0.1 mm": 0.1,
+        "0.2 mm": 0.2,
+        "0.5 mm": 0.5,
+        "1.0 mm": 1.0
+    }
+
+    value = map_allow.get(message.text)
+
+    if value is None:
+        return await message.answer("Выберите припуск кнопками")
+
+    await state.update_data(allowance=value)
+
+    await message.answer(
+        "Углы обработки:",
+        reply_markup=corner_kb()
+    )
+
     await state.set_state(CAM.corner)
 
 
+# =========================
+# CORNER
+# =========================
 @router.message(CAM.corner)
 async def corner(message: Message, state: FSMContext):
 
     await state.update_data(corner_type=message.text)
 
     if message.text in ["ФАСКА", "РАДИУС"]:
-        await message.answer("Corner size (mm):")
+        await message.answer("Введите размер (мм):")
         await state.set_state(CAM.corner_value)
         return
 
@@ -105,18 +183,28 @@ async def corner(message: Message, state: FSMContext):
     await build(message, state)
 
 
+# =========================
+# CORNER VALUE
+# =========================
 @router.message(CAM.corner_value)
 async def corner_value(message: Message, state: FSMContext):
 
-    await state.update_data(corner_value=float(message.text))
+    try:
+        await state.update_data(corner_value=float(message.text))
+    except:
+        return await message.answer("Введите число")
+
     await build(message, state)
 
 
+# =========================
+# BUILD GCODE
+# =========================
 async def build(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
-    gcode = generate_toolpath(
+    gcode = contour(
         data["x"],
         data["y"],
         data["depth"],
@@ -124,11 +212,13 @@ async def build(message: Message, state: FSMContext):
         data["tool"],
         data["zero"],
         data["allowance"],
+        data["stepdown"],
         data["corner_type"],
         data["corner_value"]
     )
 
     file = BufferedInputFile(gcode.encode(), filename="cam.nc")
+
     await message.answer_document(file)
 
     await state.clear()
