@@ -7,6 +7,8 @@ from services.contour_gcode import contour_gcode
 
 router = Router()
 
+@router.callback_query(F.data == "cam_contour")
+
 
 # =========================
 # FSM STATES

@@ -1,29 +1,25 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-milling_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [
-            KeyboardButton(text="📐 Режимы резания"),
-        ],
-        [
-            KeyboardButton(text="🟦 Торцевое фрезерование"),
-        ],
-        [
-            KeyboardButton(text="⭕ Контур"),
-        ],
-        [
-            KeyboardButton(text="⬜ Карман"),
-        ],
-        [
-            KeyboardButton(text="📏 Паз"),
-        ],
-        [
-            KeyboardButton(text="🌀 Винтовая интерполяция"),
-        ],
-        [
-            KeyboardButton(text="⬅️ Назад"),
-        ],
+milling_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text="📐 Режимы резания", callback_data="cam_modes")
     ],
-    resize_keyboard=True,
-    input_field_placeholder="Выберите операцию..."
-)
+    [
+        InlineKeyboardButton(text="🟦 Торцевое фрезерование", callback_data="cam_face")
+    ],
+    [
+        InlineKeyboardButton(text="⭕ Контур", callback_data="cam_contour")
+    ],
+    [
+        InlineKeyboardButton(text="⬜ Карман", callback_data="cam_pocket")
+    ],
+    [
+        InlineKeyboardButton(text="➖ Паз", callback_data="cam_slot")
+    ],
+    [
+        InlineKeyboardButton(text="🌀 Винтовая интерполяция", callback_data="cam_helical")
+    ],
+    [
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="cam_back")
+    ]
+])
