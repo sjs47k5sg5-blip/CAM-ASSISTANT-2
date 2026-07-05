@@ -7,6 +7,7 @@ from .face import router as face_router
 
 from .drilling import router as drilling_router
 from .threading import router as threading_router
+from .milling_router import router as milling_router
 
 from .project import router as project_router
 from .reference import router as reference_router
