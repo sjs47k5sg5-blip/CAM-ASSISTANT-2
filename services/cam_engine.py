@@ -48,7 +48,7 @@ def base_path(x, y, r):
 
 
 # =========================
-# ARC GENERATOR
+# ARC BUILDER
 # =========================
 def arc(p1, p2, r):
 
@@ -80,25 +80,54 @@ def arc(p1, p2, r):
 
 
 # =========================
-# FINISH GEOMETRY (CRITICAL FIX)
+# ROUGH TOOLPATH (DEPTH BASED)
 # =========================
-def finish_path(x, y, allowance):
+def rough_pass(path, depth, stepdown):
 
-    # 🔥 IMPORTANT:
-    # finish is NOT same as rough
-    offset = allowance
+    g = []
+    z = 0
 
-    return [
-        (offset, offset),
-        (x - offset, offset),
-        (x - offset, y - offset),
-        (offset, y - offset),
-        (offset, offset)
-    ]
+    while z > -depth:
+        z -= stepdown
+        if z < -depth:
+            z = -depth
+
+        g.append(f"G1 Z{z:.3f} F120")
+
+        for p in path:
+            g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
+
+    return g
 
 
 # =========================
-# MAIN ENGINE (V61 FIXED FINISH LOGIC)
+# FINISH TOOLPATH (SINGLE PASS ONLY)
+# =========================
+def finish_pass(path, corner_type, r):
+
+    g = []
+
+    if corner_type == "РАДИУС":
+
+        for i in range(len(path) - 1):
+            cmd = arc(path[i], path[i + 1], r)
+            if cmd:
+                g.append(cmd)
+
+        cmd = arc(path[-1], path[0], r)
+        if cmd:
+            g.append(cmd)
+
+    else:
+
+        for p in path:
+            g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
+
+    return g
+
+
+# =========================
+# MAIN ENGINE (FINAL ARCH FIX)
 # =========================
 def contour(
     x,
@@ -149,68 +178,33 @@ def contour(
     g.append(f"(R={r})")
 
     # =========================
-    # ROUGH PATH (MAIN CUT)
+    # TOOLPATH (ONLY ONCE)
     # =========================
-    rough = base_path(xo, yo, r)
+    path = base_path(xo, yo, r)
 
     # =========================
-    # START POINT
+    # START
     # =========================
-    sx, sy = rough[0]
+    sx, sy = path[0]
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # ROUGHING (ONLY THIS PATH)
+    # ROUGHING (ONLY HERE)
     # =========================
-    z = 0
-
-    while z > -depth:
-        z -= stepdown
-        if z < -depth:
-            z = -depth
-
-        g.append(f"G1 Z{z:.3f} F120")
-
-        if corner_type == "РАДИУС":
-
-            for i in range(len(rough) - 1):
-                cmd = arc(rough[i], rough[i + 1], r)
-                if cmd:
-                    g.append(cmd)
-
-            cmd = arc(rough[-1], rough[0], r)
-            if cmd:
-                g.append(cmd)
-
-        else:
-
-            for p in rough:
-                g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
+    g += rough_pass(path, depth, stepdown)
 
     # =========================
-    # TRUE FINISH (FIXED - NOT DUPLICATE)
+    # SAFE RETRACT BEFORE FINISH
+    # =========================
+    g.append("G0 Z5")
+
+    # =========================
+    # FINISH (SEPARATE SINGLE PASS)
     # =========================
     if allowance > 0:
+        g.append("(FINISH PASS SINGLE)")
 
-        g.append("(TRUE FINISH PASS - OFFSET GEOMETRY)")
-
-        fin = finish_path(xo, yo, allowance)
-
-        if corner_type == "РАДИУС":
-
-            for i in range(len(fin) - 1):
-                cmd = arc(fin[i], fin[i + 1], r)
-                if cmd:
-                    g.append(cmd)
-
-            cmd = arc(fin[-1], fin[0], r)
-            if cmd:
-                g.append(cmd)
-
-        else:
-
-            for p in fin:
-                g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
+        g += finish_pass(path, corner_type, r)
 
     # =========================
     # SAFE EXIT
