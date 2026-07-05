@@ -3,6 +3,8 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
+from services.cutting_engine import CuttingEngine
+import json
 from states import MillingState
 
 from keyboards.materials import materials_keyboard
