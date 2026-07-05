@@ -17,29 +17,39 @@ async def start(message: Message):
 
 
 # =========================
-# OPEN CAM (если нажали CAM кнопку отдельно)
+# OPEN CAM MENU
 # =========================
 @router.message(F.text == "CAM")
 async def open_cam(message: Message):
     await message.answer(
-        "📐 CAM модуль открыт",
+        "📐 CAM модуль открыт\nВыберите операцию:",
         reply_markup=cam_menu
     )
 
 
 # =========================
-# SAFE FALLBACK (НЕ ЛОМАЕТ CAM)
+# CONTROLLERS (ТОЛЬКО UI)
 # =========================
-@router.message(
-    ~F.text.in_([
-        "/start",
-        "CAM",
-        "Контур",
-        "Карман",
-        "Утилиты",
-        "Справочник",
-        "Назад"
-    ])
-)
-async def fallback(message: Message):
-    await message.answer("⚠️ Используйте кнопки меню /start")
+@router.message(F.text == "Контур")
+async def contour_btn(message: Message):
+    await message.answer("📐 Контур выбран")
+
+
+@router.message(F.text == "Карман")
+async def pocket_btn(message: Message):
+    await message.answer("🟦 Карман выбран")
+
+
+@router.message(F.text == "Утилиты")
+async def utils_btn(message: Message):
+    await message.answer("⚙️ Утилиты")
+
+
+@router.message(F.text == "Справочник")
+async def manual_btn(message: Message):
+    await message.answer("📚 Справочник")
+
+
+@router.message(F.text == "Назад")
+async def back_btn(message: Message):
+    await message.answer("🔙 Главное меню", reply_markup=cam_menu)
