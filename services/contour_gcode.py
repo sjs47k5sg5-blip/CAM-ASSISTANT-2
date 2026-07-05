@@ -1,115 +1,102 @@
-import math
-
-
-# =========================
-# ZERO MODE NORMALIZER
-# =========================
-
-def normalize_zero_mode(zero_mode: str) -> str:
-    """
-    Приводит любые кнопки UI к внутренним значениям
-    """
-
-    if zero_mode in ["⬆️ Верх детали", "top", "TOP", "верх"]:
-        return "top"
-
-    if zero_mode in ["⬇️ Низ детали", "bottom", "BOTTOM", "низ"]:
-        return "bottom"
-
-    return "top"
-
-
-# =========================
-# ZERO Z CALCULATION
-# =========================
-
-def calc_z(depth, zero_mode, thickness):
-    """
-    depth = глубина резания (положительное число)
-    """
-
-    if zero_mode == "top":
-        return -depth
-
-    elif zero_mode == "bottom":
-        return -(thickness - depth)
-
-    return -depth
-
-
-# =========================
-# MAIN GENERATOR
-# =========================
-
 def contour_gcode(
-    width=20,
-    height=20,
-    depth_step=3,
-    final_depth=21,
-    safe_z=5,
-    feed_cut=200,
-    feed_move=800,
-    tool=20,
+    width,
+    height,
+    depth_step,
+    final_depth,
+    thickness,
     zero_mode="top",
-    thickness=20,
-    use_g28=False
+    cam_plan=None
 ):
     lines = []
 
-    # normalize input (ВАЖНО)
-    zero_mode = normalize_zero_mode(zero_mode)
-
-    # ================= HEADER =================
+    # =========================
+    # HEADER
+    # =========================
     lines.append("%")
-    lines.append("O1004 (CAM FIX V3 ZERO Z)")
+    lines.append("O1001 (CONTOUR CAM FIX)")
     lines.append("G21")
     lines.append("G17")
     lines.append("G90")
-    lines.append("G40")
-    lines.append("G49")
-    lines.append("G80")
+    lines.append("G40 G49 G80")
+    lines.append("G54")
+    lines.append("")
 
-    # tool change
-    if use_g28:
-        lines.append("G28 U0 W0")
-
-    lines.append(f"T{tool} M06")
-    lines.append("S2500 M03")
-
-    lines.append("G00 G54 X0 Y0")
+    # =========================
+    # SAFE START
+    # =========================
+    safe_z = 5
     lines.append(f"G00 Z{safe_z}")
 
-    # ================= CONTOUR PATH =================
-    path = [
-        (0, 0),
-        (width, 0),
-        (width, height),
-        (0, height),
-        (0, 0)
-    ]
+    # =========================
+    # CAM PLAN (NEW ENGINE SUPPORT)
+    # =========================
+    rough_enabled = True
+    finish_enabled = True
+    step_over = 1.0
 
-    depth = depth_step
+    if cam_plan:
+        rough_enabled = cam_plan.get("rough_pass", {}).get("enabled", True)
+        finish_enabled = cam_plan.get("finish_pass", {}).get("enabled", True)
 
-    while depth <= final_depth:
+    # =========================
+    # ZERO MODE LOGIC
+    # =========================
+    if zero_mode == "top":
+        z0 = 0
+        depth_direction = -1
+    else:
+        z0 = -thickness
+        depth_direction = 1
 
-        z = calc_z(depth, zero_mode, thickness)
+    # =========================
+    # DEPTH LOOP
+    # =========================
+    current_depth = 0
 
-        # approach
+    while abs(current_depth) < final_depth:
+
+        current_depth += depth_step
+        if current_depth > final_depth:
+            current_depth = final_depth
+
+        z = z0 + (current_depth * depth_direction)
+
+        lines.append("")
+        lines.append(f"(DEPTH: {round(current_depth,2)})")
         lines.append(f"G00 Z{safe_z}")
-        lines.append(f"G00 X{path[0][0]} Y{path[0][1]}")
 
-        # plunge
-        lines.append(f"G01 Z{z} F{feed_cut}")
+        # =========================
+        # ROUGH PASS
+        # =========================
+        if rough_enabled:
+            lines.append(f"G01 Z{z} F200")
 
-        # contour
-        for x, y in path[1:]:
-            lines.append(f"G01 X{x} Y{y} F{feed_cut}")
+            lines.append(f"G01 X0 Y0 F300")
+            lines.append(f"G01 X{width}")
+            lines.append(f"G01 Y{height}")
+            lines.append(f"G01 X0")
+            lines.append(f"G01 Y0")
 
-        depth += depth_step
+        # =========================
+        # FINISH PASS (OFFSET SMALLER STEP)
+        # =========================
+        if finish_enabled:
+            offset = 0.2
 
-    # ================= END =================
-    lines.append(f"G00 Z{safe_z}")
-    lines.append("M05")
+            lines.append("(FINISH PASS)")
+            lines.append(f"G01 Z{z} F150")
+
+            lines.append(f"G01 X{offset} Y{offset}")
+            lines.append(f"G01 X{width - offset}")
+            lines.append(f"G01 Y{height - offset}")
+            lines.append(f"G01 X{offset}")
+            lines.append(f"G01 Y{offset}")
+
+    # =========================
+    # END PROGRAM
+    # =========================
+    lines.append("")
+    lines.append("G00 Z50")
     lines.append("M30")
     lines.append("%")
 
