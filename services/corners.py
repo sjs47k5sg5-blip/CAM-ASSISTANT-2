@@ -22,7 +22,7 @@ def corner_enabled(
 def _normalize(x, y):
     length = math.hypot(x, y)
 
-    if length == 0:
+    if length == 0:     
         return 0.0, 0.0
 
     return x / length, y / length
