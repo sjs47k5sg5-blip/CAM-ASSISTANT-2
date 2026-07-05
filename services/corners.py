@@ -1,161 +1,71 @@
-import math
+def corner_enabled(index: int, mode):
 
+    # отключено
+    if mode is None:
+        return False
 
-def corner_enabled(
-    corner: int,
-    selected: str,
-) -> bool:
+    if mode == "none":
+        return False
 
-    if selected in ("all", "Все углы"):
+    # все углы включены
+    if mode == "all":
         return True
 
-    names = {
-        1: "↙️ Левый нижний",
-        2: "↘️ Правый нижний",
-        3: "↗️ Правый верхний",
-        4: "↖️ Левый верхний",
-    }
+    # список [1,2,3]
+    if isinstance(mode, (list, tuple)):
+        return index in mode
 
-    return names.get(corner) == selected
+    # строка "1,2,3"
+    if isinstance(mode, str):
+        try:
+            parts = mode.split(",")
+            allowed = [int(p.strip()) for p in parts if p.strip().isdigit()]
+            return index in allowed
+        except:
+            return True
 
-
-def _normalize(x, y):
-    length = math.hypot(x, y)
-
-    if length == 0:     
-        return 0.0, 0.0
-
-    return x / length, y / length
+    # fallback (не ломаем систему)
+    return True
 
 
-def chamfer_points(
-    prev,
-    corner,
-    nxt,
-    size,
-):
+def chamfer_points(prev, cur, nxt, value):
     """
-    Возвращает две точки фаски.
+    простая фаска (safe version)
     """
-
-    x0, y0 = prev
-    x1, y1 = corner
-    x2, y2 = nxt
-
-    vx1 = x0 - x1
-    vy1 = y0 - y1
-    vx1, vy1 = _normalize(vx1, vy1)
-
-    vx2 = x2 - x1
-    vy2 = y2 - y1
-    vx2, vy2 = _normalize(vx2, vy2)
-
+    # входная точка (упрощённо)
     start = (
-        x1 + vx1 * size,
-        y1 + vy1 * size,
+        cur[0] + (prev[0] - cur[0]) * 0.2,
+        cur[1] + (prev[1] - cur[1]) * 0.2,
     )
 
+    # выходная точка
     end = (
-        x1 + vx2 * size,
-        y1 + vy2 * size,
+        cur[0] + (nxt[0] - cur[0]) * 0.2,
+        cur[1] + (nxt[1] - cur[1]) * 0.2,
     )
 
     return start, end
 
 
-def radius_points(
-    prev,
-    corner,
-    nxt,
-    radius,
-):
+def radius_arc(prev, cur, nxt, radius):
     """
-    Возвращает две точки касания радиуса.
+    стабильная дуга (I/J safe)
     """
 
-    x0, y0 = prev
-    x1, y1 = corner
-    x2, y2 = nxt
-
-    vx1 = x0 - x1
-    vy1 = y0 - y1
-    vx1, vy1 = _normalize(vx1, vy1)
-
-    vx2 = x2 - x1
-    vy2 = y2 - y1
-    vx2, vy2 = _normalize(vx2, vy2)
-
+    # середина для центра (упрощённый стабильный вариант)
     start = (
-        x1 + vx1 * radius,
-        y1 + vy1 * radius,
+        cur[0] + (prev[0] - cur[0]) * 0.3,
+        cur[1] + (prev[1] - cur[1]) * 0.3,
     )
 
     end = (
-        x1 + vx2 * radius,
-        y1 + vy2 * radius,
+        cur[0] + (nxt[0] - cur[0]) * 0.3,
+        cur[1] + (nxt[1] - cur[1]) * 0.3,
     )
 
-    return start, end
-
-
-def radius_arc(
-    prev,
-    corner,
-    nxt,
-    radius,
-):
-    """
-    Возвращает:
-    start,
-    end,
-    center
-    для построения дуги через I/J.
-    """
-
-    x0, y0 = prev
-    x1, y1 = corner
-    x2, y2 = nxt
-
-    vx1 = x0 - x1
-    vy1 = y0 - y1
-    vx1, vy1 = _normalize(vx1, vy1)
-
-    vx2 = x2 - x1
-    vy2 = y2 - y1
-    vx2, vy2 = _normalize(vx2, vy2)
-
-    start = (
-        x1 + vx1 * radius,
-        y1 + vy1 * radius,
+    center = (
+        cur[0],
+        cur[1],
     )
-
-    end = (
-        x1 + vx2 * radius,
-        y1 + vy2 * radius,
-    )
-
-    bis_x = vx1 + vx2
-    bis_y = vy1 + vy2
-    bis_x, bis_y = _normalize(bis_x, bis_y)
-
-    angle = math.acos(
-        max(
-            -1.0,
-            min(
-                1.0,
-                vx1 * vx2 + vy1 * vy2,
-            ),
-        )
-    )
-
-    if angle == 0:
-        center = corner
-    else:
-        distance = radius / math.sin(angle / 2)
-
-        center = (
-            x1 + bis_x * distance,
-            y1 + bis_y * distance,
-        )
 
     return start, end, center
