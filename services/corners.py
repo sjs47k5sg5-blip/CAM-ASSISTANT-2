@@ -1,17 +1,12 @@
-from typing import Tuple
-
-Point = Tuple[float, float]
+import math
 
 
 def corner_enabled(
     corner: int,
     selected: str,
 ) -> bool:
-    """
-    Проверяет, нужно ли обрабатывать данный угол.
-    """
 
-    if selected == "Все углы":
+    if selected in ("all", "Все углы"):
         return True
 
     names = {
@@ -24,77 +19,80 @@ def corner_enabled(
     return names.get(corner) == selected
 
 
+def _normalize(x, y):
+    length = math.hypot(x, y)
+
+    if length == 0:
+        return 0.0, 0.0
+
+    return x / length, y / length
+
+
 def chamfer_points(
-    p_prev: Point,
-    p: Point,
-    p_next: Point,
-    size: float,
+    prev,
+    corner,
+    nxt,
+    size,
 ):
+    """
+    Возвращает две точки фаски.
+    """
 
-    x1, y1 = p_prev
-    x2, y2 = p
-    x3, y3 = p_next
+    x0, y0 = prev
+    x1, y1 = corner
+    x2, y2 = nxt
 
-    # точка входа
-    if x1 == x2:
-        start = (
-            x2,
-            y2 - size if y1 < y2 else y2 + size,
-        )
-    else:
-        start = (
-            x2 - size if x1 < x2 else x2 + size,
-            y2,
-        )
+    vx1 = x0 - x1
+    vy1 = y0 - y1
+    vx1, vy1 = _normalize(vx1, vy1)
 
-    # точка выхода
-    if x2 == x3:
-        end = (
-            x2,
-            y2 + size if y3 > y2 else y2 - size,
-        )
-    else:
-        end = (
-            x2 + size if x3 > x2 else x2 - size,
-            y2,
-        )
+    vx2 = x2 - x1
+    vy2 = y2 - y1
+    vx2, vy2 = _normalize(vx2, vy2)
+
+    start = (
+        x1 + vx1 * size,
+        y1 + vy1 * size,
+    )
+
+    end = (
+        x1 + vx2 * size,
+        y1 + vy2 * size,
+    )
 
     return start, end
 
 
 def radius_points(
-    p_prev: Point,
-    p: Point,
-    p_next: Point,
-    radius: float,
+    prev,
+    corner,
+    nxt,
+    radius,
 ):
+    """
+    Возвращает две точки касания радиуса.
+    """
 
-    x1, y1 = p_prev
-    x2, y2 = p
-    x3, y3 = p_next
+    x0, y0 = prev
+    x1, y1 = corner
+    x2, y2 = nxt
 
-    # начало дуги
-    if x1 == x2:
-        start = (
-            x2,
-            y2 - radius if y1 < y2 else y2 + radius,
-        )
-    else:
-        start = (
-            x2 - radius if x1 < x2 else x2 + radius,
-            y2,
-        )
+    vx1 = x0 - x1
+    vy1 = y0 - y1
+    vx1, vy1 = _normalize(vx1, vy1)
 
-    # конец дуги
-    if x2 == x3:
-        end = (
-            x2,
-            y2 + radius if y3 > y2 else y2 - radius,
-        )
-    else:
-        end = (
-            x2 + radius if x3 > x2 else x2 - radius,
-            y2,
-        )
+    vx2 = x2 - x1
+    vy2 = y2 - y1
+    vx2, vy2 = _normalize(vx2, vy2)
+
+    start = (
+        x1 + vx1 * radius,
+        y1 + vy1 * radius,
+    )
+
+    end = (
+        x1 + vx2 * radius,
+        y1 + vy2 * radius,
+    )
 
     return start, end
