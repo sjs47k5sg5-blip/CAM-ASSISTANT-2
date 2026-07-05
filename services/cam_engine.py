@@ -12,7 +12,7 @@ def f(v):
 
 
 # =========================
-# RECT
+# RECT PATH
 # =========================
 def rect(x, y):
     return [
@@ -25,7 +25,7 @@ def rect(x, y):
 
 
 # =========================
-# CHAMFER
+# CHAMFER PATH (REAL GEOMETRY)
 # =========================
 def chamfer(x, y, c):
     return [
@@ -40,24 +40,30 @@ def chamfer(x, y, c):
 
 
 # =========================
-# FANUC ARC (G2/G3)
+# FANUC ARC (G2 / G3 with I/J)
 # =========================
-def arc_fanuc(x, y, r):
+def arc_g2(x, y, r):
+    """
+    Simplified Fanuc quarter arc
+    I = X center offset
+    J = Y center offset
+    """
 
-    # 4-corner arc approximation with I/J centers
-    # simplified full-round rectangle
+    i = -r
+    j = 0
 
-    return {
-        "type": "ARC",
-        "start": (r, 0),
-        "end": (0, r),
-        "center_i": -r,
-        "center_j": 0
-    }
+    return f"G2 X{x:.3f} Y{y:.3f} I{i:.3f} J{j:.3f}"
+
+
+def arc_g3(x, y, r):
+    i = 0
+    j = -r
+
+    return f"G3 X{x:.3f} Y{y:.3f} I{i:.3f} J{j:.3f}"
 
 
 # =========================
-# TOOLPATH ENGINE
+# MAIN CAM ENGINE
 # =========================
 def contour(
     x,
@@ -76,27 +82,35 @@ def contour(
     y = f(y)
     depth = abs(f(depth))
     stepdown = abs(f(stepdown))
-    tool = f(tool)
+    tool = int(f(tool))
     allowance = f(allowance)
     r = f(corner_value)
 
     g = []
 
-    # HEADER
+    # =========================
+    # HEADER (FANUC STYLE)
+    # =========================
     g.append("%")
     g.append("G21 G90 G17")
-    g.append("G0 Z5")
-    g.append(f"T{int(tool)} M6")
+    g.append("G54")
 
+    g.append(f"T{tool} M6")
+    g.append("M3 S1200")
+
+    g.append(f"G0 G43 Z100 H{tool}")
+    g.append("G0 Z5")
+
+    # TOOL OFFSET SIM
     offset = tool / 2
     x -= offset
     y -= offset
 
     g.append(f"(ZERO={zero})")
-    g.append(f"(TYPE={corner_type})")
+    g.append(f"(CORNER={corner_type} R={r})")
 
     # =========================
-    # PATH SELECTION
+    # SELECT GEOMETRY
     # =========================
     if corner_type == "ФАСКА":
         path = chamfer(x, y, r)
@@ -110,12 +124,14 @@ def contour(
         path = rect(x, y)
         use_arc = False
 
-    # START
+    # =========================
+    # START POSITION
+    # =========================
     sx, sy = path[0]
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # ROUGHING
+    # ROUGHING PASS
     # =========================
     z = 0
 
@@ -126,27 +142,38 @@ def contour(
 
         g.append(f"G1 Z{z:.3f} F120")
 
-        for i in range(len(path)):
-            x1, y1 = path[i]
-            g.append(f"G1 X{x1:.3f} Y{y1:.3f} F250")
+        for px, py in path:
+            g.append(f"G1 X{px:.3f} Y{py:.3f} F250")
 
     # =========================
-    # FANUC ARC MODE
+    # RADIAL CORNER (REAL G2/G3)
     # =========================
     if use_arc:
-        g.append("(G2 ARC MODE)")
+        g.append("(RADIUS MODE G2)")
 
-        # simple 1/4 arc example with I/J
-        g.append(f"G2 X{x:.3f} Y{y:.3f} I{-r:.3f} J0.000 F200")
+        # bottom-right arc example
+        g.append(arc_g2(x, y, r))
 
+        # optional opposite arc (for realism)
+        g.append(arc_g3(0, y, r))
+
+    # =========================
     # FINISH PASS
+    # =========================
     if allowance > 0:
-        g.append("(FINISH)")
-        for x1, y1 in path:
-            g.append(f"G1 X{x1:.3f} Y{y1:.3f} F120")
+        g.append("(FINISH PASS)")
+        g.append(f"G1 Z{-depth:.3f} F80")
 
-    # END
-    g.append("G0 Z5")
+        for px, py in path:
+            g.append(f"G1 X{px:.3f} Y{py:.3f} F120")
+
+    # =========================
+    # SAFE EXIT (FANUC)
+    # =========================
+    g.append("G0 Z100")
+    g.append("G53 Z0 Y0")
+
+    g.append("M5")
     g.append("M30")
     g.append("%")
 
