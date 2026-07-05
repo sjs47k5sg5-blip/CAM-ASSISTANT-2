@@ -109,16 +109,16 @@ def build_path(
         # Строим радиус
         elif use_corner and corner_type == "radius":
 
-    offset_i = center[0] - start[0]
-    offset_j = center[1] - start[1]
+            offset_i = center[0] - start[0]
+            offset_j = center[1] - start[1]
 
-    lines.append(
-        f"{arc} "
-        f"X{end[0]:.3f} "
-        f"Y{end[1]:.3f} "
-        f"I{offset_i:.3f} "
-        f"J{offset_j:.3f}"
-    )
+            lines.append(
+                f"{arc} "
+                f"X{end[0]:.3f} "
+                f"Y{end[1]:.3f} "
+                f"I{offset_i:.3f} "
+                f"J{offset_j:.3f}"
+            )
 
     # Замыкаем контур
     first = order[0]
