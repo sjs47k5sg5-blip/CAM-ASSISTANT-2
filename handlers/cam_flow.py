@@ -2,12 +2,13 @@ from aiogram import Router, F
 from aiogram.types import Message
 
 from handlers.cam_state import CAM_DB, CamState
+from keyboards.cam_wizard import wizard_type
 
 router = Router()
 
 
 # =========================
-# GET STATE
+# STATE GET
 # =========================
 def state(uid: int) -> CamState:
     if uid not in CAM_DB:
@@ -16,17 +17,26 @@ def state(uid: int) -> CamState:
 
 
 # =========================
-# STEP LOCK (важно!)
+# /START (ВАЖНО!)
 # =========================
-def require_step(user: CamState, step: int):
-    return user.step == step
+@router.message(F.text == "/start")
+async def start(message: Message):
+
+    u = state(message.from_user.id)
+    u.step = 0
+
+    await message.answer(
+        "🚀 CAM WIZARD запущен\n"
+        "Шаг 1: выбери тип обработки",
+        reply_markup=wizard_type()
+    )
 
 
 # =========================
-# STEP 1: TOOL
+# TOOL INPUT
 # =========================
 @router.message(F.text.regexp(r"^\d+$"))
-async def tool_input(message: Message):
+async def tool(message: Message):
 
     u = state(message.from_user.id)
 
@@ -36,14 +46,14 @@ async def tool_input(message: Message):
     u.tool = int(message.text)
     u.step = 1
 
-    await message.answer("✔ Инструмент сохранён\n👉 Шаг 2: выбери ноль детали")
+    await message.answer("✔ Инструмент сохранён → Шаг 2")
 
 
 # =========================
-# STEP 2: ZERO
+# ZERO INPUT
 # =========================
 @router.message(F.text.in_(["Центр", "ЛВ", "ПВ", "ЛН", "ПН"]))
-async def zero_input(message: Message):
+async def zero(message: Message):
 
     u = state(message.from_user.id)
 
@@ -61,14 +71,14 @@ async def zero_input(message: Message):
     u.zero = mapping[message.text]
     u.step = 2
 
-    await message.answer("✔ Ноль установлен\n👉 Шаг 3: тип углов")
+    await message.answer("✔ Ноль установлен → Шаг 3")
 
 
 # =========================
-# STEP 3: CORNER TYPE
+# CORNER TYPE
 # =========================
 @router.message(F.text.in_(["Острые", "Радиус", "Фаска"]))
-async def corner_type(message: Message):
+async def corner(message: Message):
 
     u = state(message.from_user.id)
 
@@ -78,11 +88,11 @@ async def corner_type(message: Message):
     u.corner_type = message.text.upper()
     u.step = 3
 
-    await message.answer("✔ Тип углов выбран\n👉 Шаг 4: значение")
+    await message.answer("✔ Углы выбраны → Шаг 4")
 
 
 # =========================
-# STEP 4: VALUE
+# VALUE INPUT
 # =========================
 @router.message(F.text.regexp(r"^\d+(\.\d+)?$"))
 async def value(message: Message):
@@ -95,36 +105,30 @@ async def value(message: Message):
     u.corner_value = float(message.text)
     u.step = 4
 
-    await message.answer("✔ Параметр сохранён\n👉 Готов к генерации")
+    await message.answer("✔ Параметр сохранён → ГОТОВО")
 
 
 # =========================
-# GENERATE (FINAL LOCK)
+# GENERATE
 # =========================
 @router.message(F.text == "Сгенерировать")
 async def generate(message: Message):
 
     u = state(message.from_user.id)
 
-    if u.tool == 0 or u.zero == "":
-        await message.answer("❌ CAM не заполнен")
-        return
-
     from services.cam_engine import contour
 
     gcode = contour(
         x=40,
         y=30,
-        depth=u.depth or 5,
-        stepdown=u.stepdown or 2,
+        depth=u.depth,
+        stepdown=u.stepdown,
         tool=u.tool,
         zero=u.zero,
-        allowance=u.allowance or 0.2,
+        allowance=u.allowance,
         step=0,
         corner_type=u.corner_type,
         corner_value=u.corner_value
     )
-
-    u.step = 0
 
     await message.answer(f"<pre>{gcode}</pre>", parse_mode="HTML")

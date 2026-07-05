@@ -4,7 +4,7 @@ from .cam_flow import router as cam_router
 
 router = Router()
 
-# 🔥 подключаем ТОЛЬКО новый CAM flow
+# 🔥 подключаем ТОЛЬКО новый CAM FLOW
 router.include_router(cam_router)
 
 
