@@ -6,4 +6,4 @@ router = Router()
 
 @router.message(F.text == "CAM")
 async def cam(message: Message):
-    await message.answer("CAM MENU", reply_markup=cam_menu)
+    await message.answer("МЕНЮ CAM v8", reply_markup=cam_menu)
