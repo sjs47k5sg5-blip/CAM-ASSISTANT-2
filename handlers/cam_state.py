@@ -1,17 +1,21 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
 class CamState:
-    tool: int = 10
-    zero: str = "CENTER"
-    depth: float = 5.0
-    stepdown: float = 2.0
-    allowance: float = 0.2
-    corner_type: str = "ОСТРЫЕ"
-    corner_value: float = 5.0
-    corner_mode: str = "ALL"
+    step: int = 0
+
+    tool: int = 0
+    zero: str = ""
+    depth: float = 0.0
+    stepdown: float = 0.0
+    allowance: float = 0.0
+
+    corner_type: str = ""
+    corner_value: float = 0.0
+    corner_scope: str = ""
+
+    ready: bool = False
 
 
-# глобальное хранилище (простое)
-CAM_MEMORY = {}
+CAM_DB = {}
