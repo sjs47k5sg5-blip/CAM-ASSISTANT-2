@@ -1,13 +1,12 @@
-from aiogram import Dispatcher
+from aiogram import Router
 
-from .menu import router as menu_router
-from .cam import router as cam_router
+from .cam_flow import router as cam_router
+
+router = Router()
+
+# 🔥 подключаем ТОЛЬКО новый CAM flow
+router.include_router(cam_router)
 
 
-def register_handlers(dp: Dispatcher):
-
-    # 🔥 ВАЖНО: menu ПЕРВЫЙ
-    dp.include_router(menu_router)
-
-    # 🔥 CAM ВТОРОЙ
-    dp.include_router(cam_router)
+def register_handlers(dp):
+    dp.include_router(router)
