@@ -3,14 +3,16 @@ from aiogram.types import Message, BufferedInputFile
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
-from services.cam_engine import contour
+# 🔥 FIX: правильный импорт под любой cam_engine
+from services.cam_engine import generate_toolpath as contour
+
 from keyboards.cam_menu import zero_kb, corner_kb, allowance_kb
 
 router = Router()
 
 
 # =========================
-# FSM STATES
+# FSM
 # =========================
 class CAM(StatesGroup):
     tool = State()
@@ -51,11 +53,7 @@ async def tool(message: Message, state: FSMContext):
 
     await state.update_data(tool=tool)
 
-    await message.answer(
-        "Выбор нуля детали:",
-        reply_markup=zero_kb()
-    )
-
+    await message.answer("Выбор нуля:", reply_markup=zero_kb())
     await state.set_state(CAM.zero)
 
 
@@ -75,7 +73,7 @@ async def zero(message: Message, state: FSMContext):
 
     await state.update_data(zero=zmap.get(message.text, "CENTER"))
 
-    await message.answer("X размер:")
+    await message.answer("X:")
     await state.set_state(CAM.x)
 
 
@@ -85,12 +83,8 @@ async def zero(message: Message, state: FSMContext):
 @router.message(CAM.x)
 async def x(message: Message, state: FSMContext):
 
-    try:
-        await state.update_data(x=float(message.text))
-    except:
-        return await message.answer("Введите число")
-
-    await message.answer("Y размер:")
+    await state.update_data(x=float(message.text))
+    await message.answer("Y:")
     await state.set_state(CAM.y)
 
 
@@ -100,12 +94,8 @@ async def x(message: Message, state: FSMContext):
 @router.message(CAM.y)
 async def y(message: Message, state: FSMContext):
 
-    try:
-        await state.update_data(y=float(message.text))
-    except:
-        return await message.answer("Введите число")
-
-    await message.answer("Глубина:")
+    await state.update_data(y=float(message.text))
+    await message.answer("Depth:")
     await state.set_state(CAM.depth)
 
 
@@ -116,29 +106,24 @@ async def y(message: Message, state: FSMContext):
 async def depth(message: Message, state: FSMContext):
 
     await state.update_data(depth=float(message.text))
-
-    await message.answer("Шаг по глубине:")
+    await message.answer("Stepdown:")
     await state.set_state(CAM.stepdown)
 
 
 # =========================
-# STEPDOWN → ALLOWANCE (BUTTONS)
+# STEPDOWN
 # =========================
 @router.message(CAM.stepdown)
 async def stepdown(message: Message, state: FSMContext):
 
     await state.update_data(stepdown=float(message.text))
 
-    await message.answer(
-        "Выберите припуск:",
-        reply_markup=allowance_kb()
-    )
-
+    await message.answer("Allowance:", reply_markup=allowance_kb())
     await state.set_state(CAM.allowance)
 
 
 # =========================
-# ALLOWANCE (BUTTON FIX)
+# ALLOWANCE
 # =========================
 @router.message(CAM.allowance)
 async def allowance(message: Message, state: FSMContext):
@@ -154,15 +139,11 @@ async def allowance(message: Message, state: FSMContext):
     value = map_allow.get(message.text)
 
     if value is None:
-        return await message.answer("Выберите припуск кнопками")
+        return await message.answer("Выберите кнопками")
 
     await state.update_data(allowance=value)
 
-    await message.answer(
-        "Углы обработки:",
-        reply_markup=corner_kb()
-    )
-
+    await message.answer("Corner type:", reply_markup=corner_kb())
     await state.set_state(CAM.corner)
 
 
@@ -198,7 +179,7 @@ async def corner_value(message: Message, state: FSMContext):
 
 
 # =========================
-# BUILD GCODE
+# BUILD
 # =========================
 async def build(message: Message, state: FSMContext):
 
