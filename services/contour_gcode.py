@@ -30,7 +30,7 @@ def contour_gcode(
     corner_value: float = 0,
 ):
 
-    passes = math.ceil(depth / step)
+    passes = max(1, math.ceil(depth / step))
 
     rough_points = rectangle_points(
         length=length,
@@ -49,18 +49,15 @@ def contour_gcode(
     p1, p2, p3, p4 = rough_points
     fp1, fp2, fp3, fp4 = finish_points
 
-    start_x, start_y = contour_start_point(
-        p1,
-        allowance,
-        outside=outside,
-    )
+    start_x, start_y = contour_start_point(p1, allowance, outside=outside)
 
     lines = []
 
+    # ---------------- HEADER ----------------
     lines += [
         "%",
         "O1003",
-        "(RECTANGLE CONTOUR)",
+        "(CAM FIX V3 + G28 TOOL CHANGE)",
         "",
         "G21",
         "G17",
@@ -87,33 +84,33 @@ def contour_gcode(
 
     current_depth = 0
 
+    # ---------------- ROUGH ----------------
     for p in range(passes):
 
         current_depth += step
-        if current_depth > depth:
-            current_depth = depth
+        current_depth = min(current_depth, depth)
 
         lines.append("")
         lines.append(f"(PASS {p + 1})")
 
         lines.append(f"G00 X{start_x:.3f} Y{start_y:.3f}")
         lines.append("G00 Z5.")
+
+        # ✔ SAFE TOOL ENGAGE
+        lines.append(f"G41 D{tool:02d}")
+
         lines.append(f"G01 Z{z(current_depth):.3f} F200")
 
         comp = get_compensation(outside, climb)
         lines.append(f"{comp} D{tool:02d}")
 
-        # ---------------- LEAD IN ----------------
-        for cmd in lead_in(
-            p1[0], p1[1],
-            outside=outside,
-            climb=climb,
-        ):
+        # LEAD IN
+        for cmd in lead_in(p1[0], p1[1], outside=outside, climb=climb):
             lines.append(cmd)
 
         lines[-1] += f" F{feed}"
 
-        # ---------------- PATH ----------------
+        # PATH
         build_path(
             lines,
             (p1, p2, p3, p4),
@@ -124,18 +121,14 @@ def contour_gcode(
             corner_value,
         )
 
-        # ---------------- LEAD OUT ----------------
-        for cmd in lead_out(
-            p1[0], p1[1],
-            outside=outside,
-            climb=climb,
-        ):
+        # LEAD OUT
+        for cmd in lead_out(p1[0], p1[1], outside=outside, climb=climb):
             lines.append(cmd)
 
         lines.append("G40")
         lines.append("G00 Z5.")
 
-    # ---------------- FINISH PASS ----------------
+    # ---------------- FINISH ----------------
     if finish:
 
         lines.append("")
@@ -143,34 +136,35 @@ def contour_gcode(
 
         if not finish_same_tool:
 
+            # ---------------- SAFE TOOL CHANGE WITH G28 ----------------
             lines.append("G00 Z100.")
             lines.append("M09")
             lines.append("M05")
 
+            # 🔥 G28 BEFORE TOOL CHANGE
+            lines.append("G91 G28 Z0.")
+            lines.append("G90")
+
             lines.append(f"T{finish_tool} M06")
             lines.append("G54")
             lines.append("G49")
-            lines.append(f"G00 G43 H{finish_tool:02d} Z100.")
+            lines.append("G00 G43 H{0:02d} Z100.".format(finish_tool))
 
         rpm_f = finish_rpm if finish_rpm > 0 else rpm
         feed_f = finish_feed if finish_feed > 0 else feed
 
-        start_fx, start_fy = contour_start_point(fp1, 0, outside=outside)
+        fx, fy = contour_start_point(fp1, 0, outside=outside)
 
         lines.append(f"S{rpm_f} M03")
         lines.append("M08")
-        lines.append(f"G00 X{start_fx:.3f} Y{start_fy:.3f}")
+        lines.append(f"G00 X{fx:.3f} Y{fy:.3f}")
         lines.append("G00 Z5.")
         lines.append(f"G01 Z{z(depth):.3f} F200")
 
         comp = get_compensation(outside, climb)
         lines.append(f"{comp} D{finish_tool if not finish_same_tool else tool:02d}")
 
-        for cmd in lead_in(
-            fp1[0], fp1[1],
-            outside=outside,
-            climb=climb,
-        ):
+        for cmd in lead_in(fp1[0], fp1[1], outside=outside, climb=climb):
             lines.append(cmd)
 
         lines[-1] += f" F{feed_f}"
@@ -185,11 +179,7 @@ def contour_gcode(
             corner_value,
         )
 
-        for cmd in lead_out(
-            fp1[0], fp1[1],
-            outside=outside,
-            climb=climb,
-        ):
+        for cmd in lead_out(fp1[0], fp1[1], outside=outside, climb=climb):
             lines.append(cmd)
 
         lines.append("G40")
