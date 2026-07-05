@@ -1,14 +1,42 @@
 import math
 
 
-# =========================
-# SAFE CONVERT
-# =========================
 def f(v):
     try:
         return float(v)
     except:
         return 0.0
+
+
+# =========================
+# ZERO SYSTEM (FIXED WCS)
+# =========================
+def apply_zero(x, y, mode):
+
+    x = f(x)
+    y = f(y)
+
+    # CENTER = origin in middle
+    if mode == "CENTER":
+        return -x / 2, -y / 2
+
+    # LEFT TOP
+    if mode == "TL":
+        return 0, y
+
+    # RIGHT TOP
+    if mode == "TR":
+        return x, y
+
+    # LEFT BOTTOM
+    if mode == "BL":
+        return 0, 0
+
+    # RIGHT BOTTOM
+    if mode == "BR":
+        return x, 0
+
+    return 0, 0
 
 
 # =========================
@@ -25,7 +53,7 @@ def rect(x, y):
 
 
 # =========================
-# CHAMFER PATH (REAL GEOMETRY)
+# CHAMFER (REAL GEOMETRY)
 # =========================
 def chamfer(x, y, c):
     return [
@@ -40,30 +68,14 @@ def chamfer(x, y, c):
 
 
 # =========================
-# FANUC ARC (G2 / G3 with I/J)
+# FANUC ARC (I/J)
 # =========================
-def arc_g2(x, y, r):
-    """
-    Simplified Fanuc quarter arc
-    I = X center offset
-    J = Y center offset
-    """
-
-    i = -r
-    j = 0
-
+def g2(x, y, i, j):
     return f"G2 X{x:.3f} Y{y:.3f} I{i:.3f} J{j:.3f}"
 
 
-def arc_g3(x, y, r):
-    i = 0
-    j = -r
-
-    return f"G3 X{x:.3f} Y{y:.3f} I{i:.3f} J{j:.3f}"
-
-
 # =========================
-# MAIN CAM ENGINE
+# MAIN ENGINE
 # =========================
 def contour(
     x,
@@ -101,37 +113,36 @@ def contour(
     g.append(f"G0 G43 Z100 H{tool}")
     g.append("G0 Z5")
 
-    # TOOL OFFSET SIM
+    # =========================
+    # APPLY WCS ZERO FIX
+    # =========================
+    xo, yo = apply_zero(x, y, zero)
+
+    # tool offset
     offset = tool / 2
-    x -= offset
-    y -= offset
+
+    xo -= offset
+    yo -= offset
 
     g.append(f"(ZERO={zero})")
-    g.append(f"(CORNER={corner_type} R={r})")
+    g.append(f"(WCS OFFSET X={xo:.3f} Y={yo:.3f})")
 
     # =========================
-    # SELECT GEOMETRY
+    # PATH SELECT
     # =========================
     if corner_type == "ФАСКА":
-        path = chamfer(x, y, r)
-        use_arc = False
-
-    elif corner_type == "РАДИУС":
-        path = rect(x, y)
-        use_arc = True
-
+        path = chamfer(xo, yo, r)
     else:
-        path = rect(x, y)
-        use_arc = False
+        path = rect(xo, yo)
 
     # =========================
-    # START POSITION
+    # START
     # =========================
     sx, sy = path[0]
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # ROUGHING PASS
+    # ROUGHING
     # =========================
     z = 0
 
@@ -146,29 +157,27 @@ def contour(
             g.append(f"G1 X{px:.3f} Y{py:.3f} F250")
 
     # =========================
-    # RADIAL CORNER (REAL G2/G3)
+    # RADIUS MODE (REAL G2)
     # =========================
-    if use_arc:
+    if corner_type == "РАДИУС":
+
         g.append("(RADIUS MODE G2)")
 
-        # bottom-right arc example
-        g.append(arc_g2(x, y, r))
-
-        # optional opposite arc (for realism)
-        g.append(arc_g3(0, y, r))
+        # simple corner arc example
+        g.append(g2(xo - r, yo, -r, 0))
 
     # =========================
-    # FINISH PASS
+    # FINISH
     # =========================
     if allowance > 0:
         g.append("(FINISH PASS)")
         g.append(f"G1 Z{-depth:.3f} F80")
 
         for px, py in path:
-            g.append(f"G1 X{px:.3f} Y{py:.3f} F120")
+            g.append(f"G1 X{px:.3f} Y{py:.3f}")
 
     # =========================
-    # SAFE EXIT (FANUC)
+    # END FANUC
     # =========================
     g.append("G0 Z100")
     g.append("G53 Z0 Y0")
