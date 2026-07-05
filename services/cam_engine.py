@@ -44,16 +44,50 @@ def rect(x, y):
 
 
 # =========================
-# CHAMFER
+# ARC ENGINE (REAL I/J)
 # =========================
-def chamfer(x, y, c):
+def arc(p1, p2, r):
+
+    x1, y1 = p1
+    x2, y2 = p2
+
+    mx = (x1 + x2) / 2
+    my = (y1 + y2) / 2
+
+    dx = x2 - x1
+    dy = y2 - y1
+
+    dist = math.sqrt(dx * dx + dy * dy)
+    if dist == 0:
+        return None
+
+    ux = -dy / dist
+    uy = dx / dist
+
+    h = math.sqrt(max(r * r - (dist / 2) ** 2, 0))
+
+    cx = mx + ux * h
+    cy = my + uy * h
+
+    i = cx - x1
+    j = cy - y1
+
+    return f"G2 X{x2:.3f} Y{y2:.3f} I{i:.3f} J{j:.3f}"
+
+
+# =========================
+# RADIUS PATH
+# =========================
+def radius_path(x, y, r):
+
     return [
-        (c, 0),
-        (x - c, 0),
-        (x, c),
-        (x, y - c),
-        (x - c, y),
-        (0, y - c),
+        (r, 0),
+        (x - r, 0),
+        (x, r),
+        (x, y - r),
+        (x - r, y),
+        (r, y),
+        (0, y - r),
         (0, 0)
     ]
 
@@ -94,12 +128,11 @@ def contour(
     g.append(f"T{tool} M6")
     g.append("M3 S1200")
 
-    # TOOL LENGTH COMP
     g.append(f"G0 G43 Z100 H{tool}")
     g.append("G0 Z5")
 
     # =========================
-    # WCS
+    # WCS APPLY
     # =========================
     xo, yo = apply_zero(x, y, zero)
 
@@ -111,34 +144,16 @@ def contour(
     g.append(f"(SIZE X={xo:.3f} Y={yo:.3f})")
 
     # =========================
-    # TOOLPATH
+    # PATH SELECT
     # =========================
-    if corner_type == "ФАСКА":
-        path = chamfer(xo, yo, r)
-        use_comp = False
-
-    elif corner_type == "РАДИУС":
-        path = rect(xo, yo)
-        use_comp = True
-
-    else:
-        path = rect(xo, yo)
-        use_comp = False
+    base = rect(xo, yo)
 
     # =========================
-    # START POINT
+    # START POSITION
     # =========================
-    sx, sy = path[0]
+    sx, sy = base[0]
 
-    # =========================
-    # COMPENSATION START (G41/G42 + D)
-    # =========================
-    if use_comp:
-        g.append(f"G1 X{sx:.3f} Y{sy:.3f} F200")
-        g.append(f"G41 D{tool}")
-
-    else:
-        g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
+    g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
     # ROUGHING
@@ -152,24 +167,47 @@ def contour(
 
         g.append(f"G1 Z{z:.3f} F120")
 
-        for px, py in path:
-            g.append(f"G1 X{px:.3f} Y{py:.3f} F250")
+        for p in base:
+            g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
+
+    # =========================
+    # RADIUS MODE (FULL FIX)
+    # =========================
+    if corner_type == "РАДИУС":
+
+        g.append("(INDUSTRIAL RADIUS + G41 SAFE ENTRY)")
+
+        pts = radius_path(xo, yo, r)
+
+        # =========================
+        # LEAD-IN (IMPORTANT FIX)
+        # =========================
+        lead_x = pts[0][0] - 5
+        lead_y = pts[0][1]
+
+        g.append(f"G1 X{lead_x:.3f} Y{lead_y:.3f} F200")
+        g.append("G41 D1")  # tool radius compensation
+
+        g.append(f"G1 X{pts[0][0]:.3f} Y{pts[0][1]:.3f} F200")
+
+        # contour
+        for i in range(len(pts) - 1):
+            g.append(arc(pts[i], pts[i + 1], r))
+
+        # close
+        g.append(arc(pts[-1], pts[0], r))
+
+        g.append("G40")
 
     # =========================
     # FINISH PASS
     # =========================
     if allowance > 0:
-        g.append("(FINISH)")
+        g.append("(FINISH PASS)")
         g.append(f"G1 Z{-depth:.3f} F80")
 
-        for px, py in path:
-            g.append(f"G1 X{px:.3f} Y{py:.3f}")
-
-    # =========================
-    # CANCEL COMPENSATION
-    # =========================
-    if use_comp:
-        g.append("G40")
+        for p in base:
+            g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
 
     # =========================
     # SAFE EXIT
