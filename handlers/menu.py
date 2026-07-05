@@ -11,45 +11,35 @@ router = Router()
 @router.message(F.text == "/start")
 async def start(message: Message):
     await message.answer(
-        "🚀 CAM CORE READY\nВыберите операцию:",
+        "🚀 CAM CORE READY\nВыберите модуль:",
         reply_markup=cam_menu
     )
 
 
 # =========================
-# OPEN CAM MENU
+# OPEN CAM (если нажали CAM кнопку отдельно)
 # =========================
 @router.message(F.text == "CAM")
 async def open_cam(message: Message):
     await message.answer(
-        "📐 CAM модуль открыт\nВыберите операцию:",
+        "📐 CAM модуль открыт",
         reply_markup=cam_menu
     )
 
 
 # =========================
-# BUTTONS
+# SAFE FALLBACK (НЕ ЛОМАЕТ CAM)
 # =========================
-@router.message(F.text == "Контур")
-async def contour(message: Message):
-    await message.answer("📐 Контур выбран")
-
-
-@router.message(F.text == "Карман")
-async def pocket(message: Message):
-    await message.answer("🟦 Карман выбран")
-
-
-@router.message(F.text == "Утилиты")
-async def utils(message: Message):
-    await message.answer("⚙️ Утилиты открыты")
-
-
-@router.message(F.text == "Справочник")
-async def manual(message: Message):
-    await message.answer("📚 Справочник открыт")
-
-
-@router.message(F.text == "Назад")
-async def back(message: Message):
-    await message.answer("🔙 Возврат в меню", reply_markup=cam_menu)
+@router.message(
+    ~F.text.in_([
+        "/start",
+        "CAM",
+        "Контур",
+        "Карман",
+        "Утилиты",
+        "Справочник",
+        "Назад"
+    ])
+)
+async def fallback(message: Message):
+    await message.answer("⚠️ Используйте кнопки меню /start")
