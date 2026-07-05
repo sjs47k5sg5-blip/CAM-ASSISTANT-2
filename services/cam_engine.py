@@ -31,9 +31,9 @@ def apply_zero(x, y, mode):
 
 
 # =========================
-# RECT BASE
+# BASE GEOMETRY (ONCE ONLY)
 # =========================
-def rect(x, y, r):
+def build_base(x, y, r):
 
     return [
         (r, 0),
@@ -48,7 +48,22 @@ def rect(x, y, r):
 
 
 # =========================
-# ARC (FANUC SAFE)
+# ARC CACHE BUILDER (CRITICAL FIX)
+# =========================
+def build_arc_cache(path, r):
+
+    arcs = []
+
+    for i in range(len(path) - 1):
+        arcs.append((path[i], path[i + 1]))
+
+    arcs.append((path[-1], path[0]))
+
+    return arcs
+
+
+# =========================
+# ARC GENERATOR (USED ONLY ONCE PER CACHE)
 # =========================
 def arc(p1, p2, r):
 
@@ -80,7 +95,7 @@ def arc(p1, p2, r):
 
 
 # =========================
-# MAIN ENGINE (FIXED ARCHITECTURE)
+# MAIN ENGINE (ARC CACHE FIXED)
 # =========================
 def contour(
     x,
@@ -119,7 +134,7 @@ def contour(
     g.append("G0 Z5")
 
     # =========================
-    # ZERO
+    # APPLY ZERO
     # =========================
     xo, yo = apply_zero(x, y, zero)
 
@@ -131,9 +146,17 @@ def contour(
     g.append(f"(R={r})")
 
     # =========================
-    # SINGLE TOOLPATH (CRITICAL FIX)
+    # BUILD GEOMETRY ONCE
     # =========================
-    path = rect(xo, yo, r)
+    path = build_base(xo, yo, r)
+
+    # =========================
+    # ARC CACHE (CRITICAL FIX)
+    # =========================
+    arc_cache = None
+
+    if corner_type == "РАДИУС":
+        arc_cache = build_arc_cache(path, r)
 
     # =========================
     # START
@@ -142,7 +165,7 @@ def contour(
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # DEPTH LOOP (ONLY TOOLPATH, NO EXTRA MODE)
+    # DEPTH LOOP (NO REBUILD EVER)
     # =========================
     z = 0
 
@@ -153,36 +176,42 @@ def contour(
 
         g.append(f"G1 Z{z:.3f} F120")
 
+        # =========================
+        # TOOLPATH EXECUTION (REUSED)
+        # =========================
         if corner_type == "РАДИУС":
 
-            # 🔥 ARC INSIDE EACH DEPTH (NO SECOND PASS!)
-            for i in range(len(path) - 1):
-                cmd = arc(path[i], path[i + 1], r)
+            for p1, p2 in arc_cache:
+                cmd = arc(p1, p2, r)
                 if cmd:
                     g.append(cmd)
 
-            cmd = arc(path[-1], path[0], r)
-            if cmd:
-                g.append(cmd)
-
         else:
 
-            # LINE MODE ONLY
             for p in path:
                 g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
 
     # =========================
-    # FINISH PASS (OPTIONAL ONLY)
+    # FINISH (NO ARC REBUILD)
     # =========================
     if allowance > 0:
 
-        g.append("(FINISH PASS ONLY)")
+        g.append("(FINISH PASS)")
 
-        for p in path:
-            g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
+        if corner_type == "РАДИУС":
+
+            for p1, p2 in arc_cache:
+                cmd = arc(p1, p2, r)
+                if cmd:
+                    g.append(cmd)
+
+        else:
+
+            for p in path:
+                g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
 
     # =========================
-    # EXIT
+    # SAFE EXIT
     # =========================
     g.append("G0 Z100")
     g.append("G53 Z0 Y0")
