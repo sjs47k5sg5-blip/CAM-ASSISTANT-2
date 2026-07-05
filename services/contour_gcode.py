@@ -1,17 +1,3 @@
-import math
-
-from services.geometry import (
-    rectangle_points,
-    contour_start_point,
-)
-from services.lead import lead_in, lead_out
-from services.toolpath import (
-    get_compensation,
-)
-
-from services.path_builder import build_path
-
-
 def contour_gcode(
     tool: int,
     rpm: int,
@@ -114,7 +100,7 @@ def contour_gcode(
         comp = get_compensation(outside, climb)
         lines.append(f"{comp} D{tool:02d}")
 
-        # lead in
+        # LEAD IN
         for cmd in lead_in(
             p1[0], p1[1],
             outside=outside,
@@ -123,7 +109,7 @@ def contour_gcode(
             lines.append(cmd)
         lines[-1] += f" F{feed}"
 
-        # path
+        # PATH BUILDER (FIX HERE)
         build_path(
             lines,
             (p1, p2, p3, p4),
@@ -131,10 +117,10 @@ def contour_gcode(
             outside,
             corner_type,
             corner_select,
-            float(allowance if allowance > 0 else corner_value),
+            corner_value,   # ← ВАЖНО: теперь правильно
         )
 
-        # lead out
+        # LEAD OUT
         for cmd in lead_out(
             p1[0], p1[1],
             outside=outside,
@@ -145,27 +131,16 @@ def contour_gcode(
         lines.append("G40")
         lines.append("G00 Z5.")
 
-    # ---------------- FINISH PASS ----------------
-
+    # FINISH PASS
     if finish:
 
         lines.append("")
         lines.append("(FINISH PASS)")
 
-        if not finish_same_tool:
-            lines.append("G00 Z100.")
-            lines.append("M09")
-            lines.append("M05")
-            lines.append(f"T{finish_tool} M06")
-            lines.append("G54")
-            lines.append(f"G00 G43 H{finish_tool:02d} Z100.")
-
         rpm_f = finish_rpm if finish_rpm > 0 else rpm
         feed_f = finish_feed if finish_feed > 0 else feed
 
-        start_fx, start_fy = contour_start_point(
-            fp1, 0, outside=outside
-        )
+        start_fx, start_fy = contour_start_point(fp1, 0, outside=outside)
 
         lines.append(f"S{rpm_f} M03")
         lines.append("M08")
@@ -174,15 +149,10 @@ def contour_gcode(
         lines.append(f"G01 Z{z_value(depth):.3f} F200")
 
         comp = get_compensation(outside, climb)
-        lines.append(f"{comp} D{finish_tool if not finish_same_tool else tool:02d}")
+        lines.append(f"{comp} D{tool:02d}")
 
-        for cmd in lead_in(
-            fp1[0], fp1[1],
-            outside=outside,
-            climb=climb,
-        ):
+        for cmd in lead_in(fp1[0], fp1[1], outside=outside, climb=climb):
             lines.append(cmd)
-
         lines[-1] += f" F{feed_f}"
 
         build_path(
@@ -195,17 +165,12 @@ def contour_gcode(
             corner_value,
         )
 
-        for cmd in lead_out(
-            fp1[0], fp1[1],
-            outside=outside,
-            climb=climb,
-        ):
+        for cmd in lead_out(fp1[0], fp1[1], outside=outside, climb=climb):
             lines.append(cmd)
 
         lines.append("G40")
         lines.append("G00 Z5.")
 
-    # END PROGRAM
     lines.append("")
     lines.append("G00 Z100.")
     lines.append("M09")
