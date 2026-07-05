@@ -1,200 +1,116 @@
 import math
 
-from services.geometry import rectangle_points, contour_start_point
-from services.lead import lead_in, lead_out
-from services.toolpath import get_compensation
-from services.path_builder import build_path
 
+# =========================
+# ZERO MODE NORMALIZER
+# =========================
+
+def normalize_zero_mode(zero_mode: str) -> str:
+    """
+    Приводит любые кнопки UI к внутренним значениям
+    """
+
+    if zero_mode in ["⬆️ Верх детали", "top", "TOP", "верх"]:
+        return "top"
+
+    if zero_mode in ["⬇️ Низ детали", "bottom", "BOTTOM", "низ"]:
+        return "bottom"
+
+    return "top"
+
+
+# =========================
+# ZERO Z CALCULATION
+# =========================
+
+def calc_z(depth, zero_mode, thickness):
+    """
+    depth = глубина резания (положительное число)
+    """
+
+    if zero_mode == "top":
+        return -depth
+
+    elif zero_mode == "bottom":
+        return -(thickness - depth)
+
+    return -depth
+
+
+# =========================
+# MAIN GENERATOR
+# =========================
 
 def contour_gcode(
-    tool: int,
-    rpm: int,
-    feed: int,
-    length: float,
-    width: float,
-    depth: float,
-    step: float,
-    allowance: float,
-    finish: bool = False,
-    outside: bool = True,
-    climb: bool = True,
-    zero: str = "↙️ Левый нижний",
-    zero_z: str = "Верх детали",
-    thickness: float = 0,
-    finish_same_tool: bool = True,
-    finish_tool: int = 1,
-    finish_rpm: int = 0,
-    finish_feed: int = 0,
-    corner_type: str = "none",
-    corner_select: str = "all",
-    corner_value: float = 0,
+    width=20,
+    height=20,
+    depth_step=3,
+    final_depth=21,
+    safe_z=5,
+    feed_cut=200,
+    feed_move=800,
+    tool=20,
+    zero_mode="top",
+    thickness=20,
+    use_g28=False
 ):
-
-    passes = max(1, math.ceil(depth / step))
-
-    rough_points = rectangle_points(
-        length=length,
-        width=width,
-        zero=zero,
-        allowance=allowance,
-        outside=outside,
-    )
-
-    finish_points = rectangle_points(
-        length=length,
-        width=width,
-        zero=zero,
-    )
-
-    p1, p2, p3, p4 = rough_points
-    fp1, fp2, fp3, fp4 = finish_points
-
-    start_x, start_y = contour_start_point(p1, allowance, outside=outside)
-
     lines = []
 
-    # ---------------- HEADER ----------------
-    lines += [
-        "%",
-        "O1003",
-        "(CAM FIX V3 + G28 TOOL CHANGE)",
-        "",
-        "G21",
-        "G17",
-        "G90",
-        "G40",
-        "G49",
-        "G80",
-        "",
-        f"T{tool} M06",
-        "G54",
-        "",
-        f"S{rpm} M03",
-        "M08",
-        "",
-        f"G00 G43 H{tool:02d} Z100.",
+    # normalize input (ВАЖНО)
+    zero_mode = normalize_zero_mode(zero_mode)
+
+    # ================= HEADER =================
+    lines.append("%")
+    lines.append("O1004 (CAM FIX V3 ZERO Z)")
+    lines.append("G21")
+    lines.append("G17")
+    lines.append("G90")
+    lines.append("G40")
+    lines.append("G49")
+    lines.append("G80")
+
+    # tool change
+    if use_g28:
+        lines.append("G28 U0 W0")
+
+    lines.append(f"T{tool} M06")
+    lines.append("S2500 M03")
+
+    lines.append("G00 G54 X0 Y0")
+    lines.append(f"G00 Z{safe_z}")
+
+    # ================= CONTOUR PATH =================
+    path = [
+        (0, 0),
+        (width, 0),
+        (width, height),
+        (0, height),
+        (0, 0)
     ]
 
-    def z(v):
-        if zero_z == "⬆️ Верх детали":
-            return -v
-        elif zero_z == "⬇️ Низ детали":
-            return -(thickness - v)
-        return -v
+    depth = depth_step
 
-    current_depth = 0
+    while depth <= final_depth:
 
-    # ---------------- ROUGH ----------------
-    for p in range(passes):
+        z = calc_z(depth, zero_mode, thickness)
 
-        current_depth += step
-        current_depth = min(current_depth, depth)
+        # approach
+        lines.append(f"G00 Z{safe_z}")
+        lines.append(f"G00 X{path[0][0]} Y{path[0][1]}")
 
-        lines.append("")
-        lines.append(f"(PASS {p + 1})")
+        # plunge
+        lines.append(f"G01 Z{z} F{feed_cut}")
 
-        lines.append(f"G00 X{start_x:.3f} Y{start_y:.3f}")
-        lines.append("G00 Z5.")
+        # contour
+        for x, y in path[1:]:
+            lines.append(f"G01 X{x} Y{y} F{feed_cut}")
 
-        # ✔ SAFE TOOL ENGAGE
-        lines.append(f"G41 D{tool:02d}")
+        depth += depth_step
 
-        lines.append(f"G01 Z{z(current_depth):.3f} F200")
-
-        comp = get_compensation(outside, climb)
-        lines.append(f"{comp} D{tool:02d}")
-
-        # LEAD IN
-        for cmd in lead_in(p1[0], p1[1], outside=outside, climb=climb):
-            lines.append(cmd)
-
-        lines[-1] += f" F{feed}"
-
-        # PATH
-        build_path(
-            lines,
-            (p1, p2, p3, p4),
-            climb,
-            outside,
-            corner_type,
-            corner_select,
-            corner_value,
-        )
-
-        # LEAD OUT
-        for cmd in lead_out(p1[0], p1[1], outside=outside, climb=climb):
-            lines.append(cmd)
-
-        lines.append("G40")
-        lines.append("G00 Z5.")
-
-    # ---------------- FINISH ----------------
-    if finish:
-
-        lines.append("")
-        lines.append("(FINISH PASS)")
-
-        if not finish_same_tool:
-
-            # ---------------- SAFE TOOL CHANGE WITH G28 ----------------
-            lines.append("G00 Z100.")
-            lines.append("M09")
-            lines.append("M05")
-
-            # 🔥 G28 BEFORE TOOL CHANGE
-            lines.append("G91 G28 Z0.")
-            lines.append("G90")
-
-            lines.append(f"T{finish_tool} M06")
-            lines.append("G54")
-            lines.append("G49")
-            lines.append("G00 G43 H{0:02d} Z100.".format(finish_tool))
-
-        rpm_f = finish_rpm if finish_rpm > 0 else rpm
-        feed_f = finish_feed if finish_feed > 0 else feed
-
-        fx, fy = contour_start_point(fp1, 0, outside=outside)
-
-        lines.append(f"S{rpm_f} M03")
-        lines.append("M08")
-        lines.append(f"G00 X{fx:.3f} Y{fy:.3f}")
-        lines.append("G00 Z5.")
-        lines.append(f"G01 Z{z(depth):.3f} F200")
-
-        comp = get_compensation(outside, climb)
-        lines.append(f"{comp} D{finish_tool if not finish_same_tool else tool:02d}")
-
-        for cmd in lead_in(fp1[0], fp1[1], outside=outside, climb=climb):
-            lines.append(cmd)
-
-        lines[-1] += f" F{feed_f}"
-
-        build_path(
-            lines,
-            (fp1, fp2, fp3, fp4),
-            climb,
-            outside,
-            corner_type,
-            corner_select,
-            corner_value,
-        )
-
-        for cmd in lead_out(fp1[0], fp1[1], outside=outside, climb=climb):
-            lines.append(cmd)
-
-        lines.append("G40")
-        lines.append("G00 Z5.")
-
-    # ---------------- END PROGRAM ----------------
-    lines += [
-        "",
-        "G00 Z100.",
-        "M09",
-        "M05",
-        "G91 G28 Z0.",
-        "G90",
-        "M30",
-        "%",
-    ]
+    # ================= END =================
+    lines.append(f"G00 Z{safe_z}")
+    lines.append("M05")
+    lines.append("M30")
+    lines.append("%")
 
     return "\n".join(lines)
