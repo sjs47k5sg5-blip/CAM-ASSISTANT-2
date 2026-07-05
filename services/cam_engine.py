@@ -31,23 +31,9 @@ def apply_zero(x, y, mode):
 
 
 # =========================
-# RECT (LINE MODE)
+# RECT BASE
 # =========================
-def rect(x, y):
-
-    return [
-        (0, 0),
-        (x, 0),
-        (x, y),
-        (0, y),
-        (0, 0)
-    ]
-
-
-# =========================
-# RADIUS GEOMETRY (ARC MODE ONLY)
-# =========================
-def radius_path(x, y, r):
+def rect(x, y, r):
 
     return [
         (r, 0),
@@ -62,7 +48,7 @@ def radius_path(x, y, r):
 
 
 # =========================
-# ARC GENERATOR (SAFE I/J)
+# ARC (FANUC SAFE)
 # =========================
 def arc(p1, p2, r):
 
@@ -94,7 +80,7 @@ def arc(p1, p2, r):
 
 
 # =========================
-# MAIN ENGINE (CRITICAL FIX)
+# MAIN ENGINE (FIXED ARCHITECTURE)
 # =========================
 def contour(
     x,
@@ -133,7 +119,7 @@ def contour(
     g.append("G0 Z5")
 
     # =========================
-    # ZERO APPLY
+    # ZERO
     # =========================
     xo, yo = apply_zero(x, y, zero)
 
@@ -145,15 +131,9 @@ def contour(
     g.append(f"(R={r})")
 
     # =========================
-    # CRITICAL FIX:
-    # ONLY ONE TOOLPATH SELECTED
+    # SINGLE TOOLPATH (CRITICAL FIX)
     # =========================
-    if corner_type == "РАДИУС":
-        path = radius_path(xo, yo, r)
-        mode = "ARC"
-    else:
-        path = rect(xo, yo)
-        mode = "LINE"
+    path = rect(xo, yo, r)
 
     # =========================
     # START
@@ -162,7 +142,7 @@ def contour(
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # DEPTH PASS (ONLY ONCE PATH)
+    # DEPTH LOOP (ONLY TOOLPATH, NO EXTRA MODE)
     # =========================
     z = 0
 
@@ -173,24 +153,23 @@ def contour(
 
         g.append(f"G1 Z{z:.3f} F120")
 
-        for p in path:
-            g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
+        if corner_type == "РАДИУС":
 
-    # =========================
-    # RADIUS EXECUTION (NO G1 DUPLICATION)
-    # =========================
-    if mode == "ARC":
+            # 🔥 ARC INSIDE EACH DEPTH (NO SECOND PASS!)
+            for i in range(len(path) - 1):
+                cmd = arc(path[i], path[i + 1], r)
+                if cmd:
+                    g.append(cmd)
 
-        g.append("(ARC MODE ONLY - NO LINE PASS)")
-
-        for i in range(len(path) - 1):
-            cmd = arc(path[i], path[i + 1], r)
+            cmd = arc(path[-1], path[0], r)
             if cmd:
                 g.append(cmd)
 
-        cmd = arc(path[-1], path[0], r)
-        if cmd:
-            g.append(cmd)
+        else:
+
+            # LINE MODE ONLY
+            for p in path:
+                g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
 
     # =========================
     # FINISH PASS (OPTIONAL ONLY)
@@ -203,7 +182,7 @@ def contour(
             g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
 
     # =========================
-    # SAFE EXIT
+    # EXIT
     # =========================
     g.append("G0 Z100")
     g.append("G53 Z0 Y0")
