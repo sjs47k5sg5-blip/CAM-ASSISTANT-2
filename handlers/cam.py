@@ -4,7 +4,13 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
 from services.cam_engine import contour
-from keyboards.cam_menu import zero_kb, corner_kb, allowance_kb, corner_select_kb
+from keyboards.cam_wizard import (
+    wizard_type,
+    wizard_zero,
+    wizard_corners,
+    wizard_scope,
+    wizard_params
+)
 
 router = Router()
 
