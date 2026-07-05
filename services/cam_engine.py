@@ -1,6 +1,9 @@
 import math
 
 
+# =========================
+# SAFE CONVERT
+# =========================
 def f(v):
     try:
         return float(v)
@@ -31,7 +34,7 @@ def apply_zero(x, y, mode):
 
 
 # =========================
-# RECT BASE
+# RECTANGLE BASE
 # =========================
 def base_rect(x, y):
 
@@ -45,44 +48,11 @@ def base_rect(x, y):
 
 
 # =========================
-# TRUE CHAMFER GEOMETRY (FIXED)
-# =========================
-def chamfer_rect(x, y, c):
-
-    # 🔥 REAL chamfer = CUT CORNERS, NOT OFFSET
-
-    return [
-        # bottom edge + chamfer
-        (c, 0),
-        (x - c, 0),
-
-        # right-bottom chamfer
-        (x, c),
-
-        # right edge
-        (x, y - c),
-
-        # top-right chamfer
-        (x - c, y),
-
-        # top edge
-        (c, y),
-
-        # left-top chamfer
-        (0, y - c),
-
-        # left edge
-        (0, c),
-
-        # close
-        (c, 0)
-    ]
-
-
-# =========================
 # RADIUS GEOMETRY
 # =========================
 def radius_rect(x, y, r):
+
+    r = min(r, x / 2, y / 2)
 
     return [
         (r, 0),
@@ -93,6 +63,26 @@ def radius_rect(x, y, r):
         (r, y),
         (0, y - r),
         (0, 0)
+    ]
+
+
+# =========================
+# CHAMFER GEOMETRY (REAL)
+# =========================
+def chamfer_rect(x, y, c):
+
+    c = min(c, x / 2, y / 2)
+
+    return [
+        (c, 0),
+        (x - c, 0),
+        (x, c),
+        (x, y - c),
+        (x - c, y),
+        (c, y),
+        (0, y - c),
+        (0, c),
+        (c, 0)
     ]
 
 
@@ -129,27 +119,7 @@ def arc(p1, p2, r):
 
 
 # =========================
-# MODE SELECTOR
-# =========================
-def select_mode(mode, x, y, r):
-
-    mode = (mode or "").upper()
-
-    if "ОСТР" in mode:
-        return "LINE", base_rect(x, y), 0
-
-    elif "РАДИ" in mode:
-        return "ARC", radius_rect(x, y, r), r
-
-    elif "ФАСК" in mode:
-        return "CHAMFER", chamfer_rect(x, y, r), r
-
-    else:
-        return "LINE", base_rect(x, y), 0
-
-
-# =========================
-# MAIN ENGINE
+# MAIN CONTROLLER
 # =========================
 def contour(
     x,
@@ -197,21 +167,30 @@ def contour(
     yo -= offset_tool
 
     # =========================
-    # MODE
+    # MODE SELECT
     # =========================
-    mode, path, used_r = select_mode(corner_type, xo, yo, r)
+    mode = (corner_type or "").upper()
 
-    g.append(f"(MODE={mode})")
-    g.append(f"(R={used_r})")
+    if "ОСТР" in mode:
+        path = base_rect(xo, yo)
+
+    elif "РАДИ" in mode:
+        path = radius_rect(xo, yo, r)
+
+    elif "ФАСК" in mode:
+        path = chamfer_rect(xo, yo, r)
+
+    else:
+        path = base_rect(xo, yo)
 
     # =========================
-    # START
+    # START POINT
     # =========================
     sx, sy = path[0]
     g.append(f"G0 X{sx:.3f} Y{sy:.3f}")
 
     # =========================
-    # ROUGHING
+    # ROUGH PASS
     # =========================
     z = 0
 
@@ -222,14 +201,14 @@ def contour(
 
         g.append(f"G1 Z{z:.3f} F120")
 
-        if mode == "ARC":
+        if "РАДИ" in mode:
 
             for i in range(len(path) - 1):
-                cmd = arc(path[i], path[i + 1], used_r)
+                cmd = arc(path[i], path[i + 1], r)
                 if cmd:
                     g.append(cmd)
 
-            cmd = arc(path[-1], path[0], used_r)
+            cmd = arc(path[-1], path[0], r)
             if cmd:
                 g.append(cmd)
 
@@ -239,25 +218,20 @@ def contour(
                 g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f} F250")
 
     # =========================
-    # FINISH (NO DUPLICATION)
+    # FINISH PASS (NO DUPLICATION)
     # =========================
     if allowance > 0:
 
         g.append("(FINISH PASS)")
 
-        if mode == "CHAMFER":
-
-            for p in path:
-                g.append(f"G1 X{p[0]:.3f} Y{p[1]:.3f}")
-
-        elif mode == "ARC":
+        if "РАДИ" in mode:
 
             for i in range(len(path) - 1):
-                cmd = arc(path[i], path[i + 1], used_r)
+                cmd = arc(path[i], path[i + 1], r)
                 if cmd:
                     g.append(cmd)
 
-            cmd = arc(path[-1], path[0], used_r)
+            cmd = arc(path[-1], path[0], r)
             if cmd:
                 g.append(cmd)
 
@@ -271,7 +245,6 @@ def contour(
     # =========================
     g.append("G0 Z100")
     g.append("G53 Z0 Y0")
-
     g.append("M5")
     g.append("M30")
     g.append("%")
