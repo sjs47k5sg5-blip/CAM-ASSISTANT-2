@@ -186,8 +186,8 @@ for cmd in lead_out(
     climb=climb,
 ):
     lines.append(cmd)
-        lines.append("G40")
-        lines.append("G00 Z5.")
+lines.append("G40")
+lines.append("G00 Z5.")
     if finish:
 
         lines.append("")
