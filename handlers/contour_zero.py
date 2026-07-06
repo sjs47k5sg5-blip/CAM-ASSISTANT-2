@@ -9,16 +9,18 @@ router = Router()
 
 
 def user(uid: int):
+    if uid not in CAM_DB:
+        from handlers.cam_state import CamState
+        CAM_DB[uid] = CamState()
+
     return CAM_DB[uid]
 
 
-# =========================
-# НОЛЬ ДЕТАЛИ
-# =========================
 @router.message(F.text == "📍 Ноль детали")
-async def zero(message: Message):
+async def zero_start(message: Message):
 
     u = user(message.from_user.id)
+
     u.screen = "zero"
 
     await message.answer(
@@ -45,7 +47,7 @@ async def zero_center(message: Message):
 
 
 @router.message(F.text == "Левый верхний")
-async def zero_tl(message: Message):
+async def zero_left_top(message: Message):
 
     u = user(message.from_user.id)
 
@@ -62,7 +64,7 @@ async def zero_tl(message: Message):
 
 
 @router.message(F.text == "Правый верхний")
-async def zero_tr(message: Message):
+async def zero_right_top(message: Message):
 
     u = user(message.from_user.id)
 
@@ -79,7 +81,7 @@ async def zero_tr(message: Message):
 
 
 @router.message(F.text == "Левый нижний")
-async def zero_bl(message: Message):
+async def zero_left_bottom(message: Message):
 
     u = user(message.from_user.id)
 
@@ -96,7 +98,7 @@ async def zero_bl(message: Message):
 
 
 @router.message(F.text == "Правый нижний")
-async def zero_br(message: Message):
+async def zero_right_bottom(message: Message):
 
     u = user(message.from_user.id)
 
@@ -113,15 +115,16 @@ async def zero_br(message: Message):
 
 
 @router.message(F.text == "⬅️ Назад")
-async def back(message: Message):
+async def zero_back(message: Message):
 
     u = user(message.from_user.id)
 
-    if u.screen == "zero":
+    if u.screen != "zero":
+        return
 
-        u.screen = "contour"
+    u.screen = "contour"
 
-        await message.answer(
-            "Введите параметры обработки",
-            reply_markup=contour_menu()
-        )
+    await message.answer(
+        "Параметры обработки",
+        reply_markup=contour_menu()
+    )
