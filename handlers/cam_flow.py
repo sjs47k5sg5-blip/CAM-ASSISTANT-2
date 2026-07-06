@@ -13,7 +13,15 @@ def state(uid: int) -> CamState:
 
 
 # =========================
-# CONTOUR START
+# ENTRY CAM
+# =========================
+@router.message(F.text == "⚙ Фрезерные операции")
+async def cam_start(message: Message):
+    await message.answer("👉 Нажмите 📐 Контур")
+
+
+# =========================
+# CONTOUR (🔥 FIXED)
 # =========================
 @router.message(F.text == "📐 Контур")
 async def contour(message: Message):
@@ -23,7 +31,7 @@ async def contour(message: Message):
 
 
 # =========================
-# SIZE INPUT
+# SIZE
 # =========================
 @router.message(F.text.regexp(r"^\d+ \d+ \d+$"))
 async def size(message: Message):
@@ -44,7 +52,7 @@ async def size(message: Message):
 
 
 # =========================
-# TOOL INPUT
+# TOOL
 # =========================
 @router.message(F.text.regexp(r"^\d+(\.\d+)?$"))
 async def tool(message: Message):
@@ -56,11 +64,11 @@ async def tool(message: Message):
     u.tool = float(message.text)
     u.step = 3
 
-    await message.answer("📐 Введите радиус / фаску")
+    await message.answer("📐 Введите R / фаску")
 
 
 # =========================
-# VALUE INPUT
+# VALUE
 # =========================
 @router.message(F.text.regexp(r"^\d+(\.\d+)?$"))
 async def value(message: Message):
@@ -72,7 +80,7 @@ async def value(message: Message):
     u.corner_value = float(message.text)
     u.step = 4
 
-    await message.answer("✅ Готово → нажмите ГЕНЕРАЦИЯ")
+    await message.answer("✅ Готово → ГЕНЕРАЦИЯ")
 
 
 # =========================

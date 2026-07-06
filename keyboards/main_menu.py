@@ -6,6 +6,7 @@ def main_menu():
         keyboard=[
             [KeyboardButton(text="📁 Проект")],
             [KeyboardButton(text="⚙ Фрезерные операции")],
+            [KeyboardButton(text="📐 Контур")],   # 🔥 FIX
             [KeyboardButton(text="🕳 Обработка отверстий")],
             [KeyboardButton(text="ℹ О программе")]
         ],
