@@ -8,5 +8,6 @@ router = Router()
 router.include_router(menu_router)
 router.include_router(cam_router)
 
+
 def register_handlers(dp):
     dp.include_router(router)

@@ -1,17 +1,19 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class CamState:
     step: int = 0
 
-    tool: int = 0
-    zero: str = "CENTER"
-    depth: float = 5.0
-    stepdown: float = 2.0
-    allowance: float = 0.2
+    size_x: float = 0.0
+    size_y: float = 0.0
+    size_z: float = 0.0
 
-    mode: str = ""
+    tool: float = 0.0
     corner_value: float = 0.0
+
+    zero: str = "CENTER"
+    mode: str = "CONTOUR"
 
 
 CAM_DB = {}

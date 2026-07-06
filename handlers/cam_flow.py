@@ -2,7 +2,6 @@ from aiogram import Router, F
 from aiogram.types import Message
 
 from handlers.cam_state import CAM_DB, CamState
-from keyboards.cam_wizard import wizard_zero, wizard_corner_type, wizard_params
 
 router = Router()
 
@@ -14,97 +13,86 @@ def state(uid: int) -> CamState:
 
 
 # =========================
-# 1. КОНТУР
+# CONTOUR START
 # =========================
 @router.message(F.text == "📐 Контур")
 async def contour(message: Message):
-
     u = state(message.from_user.id)
-    u.mode = "CONTOUR"
     u.step = 1
-
-    await message.answer(
-        "✔ Контур выбран\n👉 Шаг 2: выбери ноль детали",
-        reply_markup=wizard_zero()
-    )
+    await message.answer("📏 Введите размер детали: X Y Z")
 
 
 # =========================
-# 2. НОЛЬ ДЕТАЛИ
+# SIZE INPUT
 # =========================
-@router.message(F.text.in_(["🎯 Центр", "↖ ЛВ", "↗ ПВ", "↙ ЛН", "↘ ПН"]))
-async def zero(message: Message):
-
+@router.message(F.text.regexp(r"^\d+ \d+ \d+$"))
+async def size(message: Message):
     u = state(message.from_user.id)
-    u.zero = message.text
+
+    if u.step != 1:
+        return
+
+    x, y, z = message.text.split()
+
+    u.size_x = float(x)
+    u.size_y = float(y)
+    u.size_z = float(z)
+
     u.step = 2
 
-    await message.answer(
-        "✔ Ноль установлен\n👉 Шаг 3: тип углов",
-        reply_markup=wizard_corner_type()
-    )
+    await message.answer("🔧 Введите инструмент")
 
 
 # =========================
-# 3. ТИП УГЛОВ
+# TOOL INPUT
 # =========================
-@router.message(F.text.in_(["⬜ Острые", "⭕ Радиус", "📐 Фаска"]))
-async def corner_type(message: Message):
-
+@router.message(F.text.regexp(r"^\d+(\.\d+)?$"))
+async def tool(message: Message):
     u = state(message.from_user.id)
-    u.mode_corner = message.text
+
+    if u.step != 2:
+        return
+
+    u.tool = float(message.text)
     u.step = 3
 
-    await message.answer(
-        "✔ Тип углов выбран\n👉 Шаг 4: параметры",
-        reply_markup=wizard_params()
-    )
+    await message.answer("📐 Введите радиус / фаску")
 
 
 # =========================
-# 4. ИНСТРУМЕНТ
-# =========================
-@router.message(F.text.regexp(r"^\d+$"))
-async def tool(message: Message):
-
-    u = state(message.from_user.id)
-    u.tool = int(message.text)
-
-    await message.answer("✔ Инструмент сохранён\n👉 Введи значение R/Фаски")
-
-
-# =========================
-# 5. ЗНАЧЕНИЕ R / ФАСКИ
+# VALUE INPUT
 # =========================
 @router.message(F.text.regexp(r"^\d+(\.\d+)?$"))
 async def value(message: Message):
-
     u = state(message.from_user.id)
+
+    if u.step != 3:
+        return
+
     u.corner_value = float(message.text)
+    u.step = 4
 
-    await message.answer("✔ Параметр сохранён\n👉 Можно генерировать")
+    await message.answer("✅ Готово → нажмите ГЕНЕРАЦИЯ")
 
 
 # =========================
-# 6. ГЕНЕРАЦИЯ
+# GENERATE
 # =========================
-@router.message(F.text == "✅ Сгенерировать")
+@router.message(F.text == "ГЕНЕРАЦИЯ")
 async def generate(message: Message):
-
     u = state(message.from_user.id)
 
     from services.cam_engine import contour
 
     gcode = contour(
-        x=40,
-        y=30,
-        depth=5,
-        stepdown=2,
+        x=u.size_x,
+        y=u.size_y,
+        depth=u.size_z,
         tool=u.tool,
         zero=u.zero,
         allowance=0.2,
-        step=0,
-        corner_type=u.mode_corner,
+        stepdown=2,
+        corner_type=u.mode,
         corner_value=u.corner_value
     )
 
