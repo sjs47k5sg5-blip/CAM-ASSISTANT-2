@@ -2,27 +2,13 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
 # =========================
-# WIZARD START
-# =========================
-def wizard_start():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🚀 Начать CAM")]
-        ],
-        resize_keyboard=True
-    )
-
-
-# =========================
-# STEP 1: TYPE
+# STEP 1 -- ТОЛЬКО КОНТУР
 # =========================
 def wizard_type():
     return ReplyKeyboardMarkup(
         keyboard=[
             [
-                KeyboardButton(text="📐 Контур"),
-                KeyboardButton(text="🔵 Радиус"),
-                KeyboardButton(text="📏 Фаска")
+                KeyboardButton(text="📐 Контур")
             ],
             [
                 KeyboardButton(text="⬅️ Назад")
@@ -33,19 +19,19 @@ def wizard_type():
 
 
 # =========================
-# STEP 2: ZERO
+# STEP 2 -- НОЛЬ ДЕТАЛИ
 # =========================
 def wizard_zero():
     return ReplyKeyboardMarkup(
         keyboard=[
             [
                 KeyboardButton(text="🎯 Центр"),
-                KeyboardButton(text="↖ ЛВ угол")
+                KeyboardButton(text="↖ ЛВ"),
+                KeyboardButton(text="↗ ПВ")
             ],
             [
-                KeyboardButton(text="↗ ПВ угол"),
-                KeyboardButton(text="↙ ЛН угол"),
-                KeyboardButton(text="↘ ПН угол")
+                KeyboardButton(text="↙ ЛН"),
+                KeyboardButton(text="↘ ПН")
             ],
             [
                 KeyboardButton(text="⬅️ Назад")
@@ -56,9 +42,9 @@ def wizard_zero():
 
 
 # =========================
-# STEP 3: CORNERS
+# STEP 3 -- ТИП УГЛОВ (ВНУТРИ КОНТУРА)
 # =========================
-def wizard_corners():
+def wizard_corner_type():
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -75,9 +61,9 @@ def wizard_corners():
 
 
 # =========================
-# STEP 4: CORNER SCOPE
+# STEP 4 -- ВЫБОР УГЛОВ
 # =========================
-def wizard_scope():
+def wizard_corner_scope():
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -97,7 +83,7 @@ def wizard_scope():
 
 
 # =========================
-# STEP 5: PARAMETERS
+# STEP 5 -- ПАРАМЕТРЫ
 # =========================
 def wizard_params():
     return ReplyKeyboardMarkup(
@@ -107,7 +93,7 @@ def wizard_params():
                 KeyboardButton(text="🔧 Инструмент")
             ],
             [
-                KeyboardButton(text="📐 Радиус/Фаска"),
+                KeyboardButton(text="📐 Значение R/Фаски"),
                 KeyboardButton(text="⚙ Stepdown")
             ],
             [

@@ -7,100 +7,48 @@ from keyboards.cam_wizard import wizard_type
 router = Router()
 
 
-# =========================
-# STATE
-# =========================
 def state(uid: int) -> CamState:
     if uid not in CAM_DB:
         CAM_DB[uid] = CamState()
     return CAM_DB[uid]
 
 
-# =========================
-# /START
-# =========================
-@router.message(F.text == "/start")
-async def start(message: Message):
-
-    u = state(message.from_user.id)
-    u.step = 0
-
-    await message.answer(
-        "🚀 CAM WIZARD запущен\nВыберите тип обработки:",
-        reply_markup=wizard_type()
-    )
-
-
-# =========================
-# 🔥 BUTTON HANDLERS (ВАЖНО)
-# =========================
 @router.message(F.text == "📐 Контур")
-async def contour(message: Message):
-    u = state(message.from_user.id)
-    u.mode = "CONTOUR"
-
-    await message.answer("✔ Контур выбран\nВведите диаметр инструмента:")
-
-
 @router.message(F.text == "🔵 Радиус")
-async def radius(message: Message):
-    u = state(message.from_user.id)
-    u.mode = "RADIUS"
-
-    await message.answer("✔ Радиус выбран\nВведите значение радиуса:")
-
-
 @router.message(F.text == "📏 Фаска")
-async def chamfer(message: Message):
+async def mode(message: Message):
+
     u = state(message.from_user.id)
-    u.mode = "CHAMFER"
+    u.mode = message.text
 
-    await message.answer("✔ Фаска выбрана\nВведите значение фаски:")
-
-
-# =========================
-# BACK BUTTON
-# =========================
-@router.message(F.text == "⬅️ Назад")
-async def back(message: Message):
-    await message.answer(
-        "↩ Возврат в CAM:",
-        reply_markup=wizard_type()
-    )
+    await message.answer("✔ Режим выбран\nВведите инструмент:")
 
 
-# =========================
-# TOOL INPUT
-# =========================
 @router.message(F.text.regexp(r"^\d+$"))
-async def tool_input(message: Message):
+async def tool(message: Message):
 
     u = state(message.from_user.id)
-
     u.tool = int(message.text)
     u.step = 1
 
-    await message.answer(f"✔ Инструмент: {u.tool} мм\nПродолжай настройки")
+    await message.answer("✔ Инструмент сохранён")
 
 
-# =========================
-# VALUE INPUT (R / CHAMFER)
-# =========================
-@router.message(F.text.regexp(r"^\d+(\.\d+)?$"))
-async def value_input(message: Message):
+@router.message(F.text.in_(["Центр", "ЛВ", "ПВ", "ЛН", "ПН"]))
+async def zero(message: Message):
 
     u = state(message.from_user.id)
+    u.zero = message.text
+    u.step = 2
 
-    u.corner_value = float(message.text)
-
-    await message.answer(
-        f"✔ Значение сохранено: {u.corner_value}\nТеперь можно генерировать"
-    )
+    await message.answer("✔ Ноль установлен")
 
 
-# =========================
-# GENERATE
-# =========================
+@router.message(F.text == "⬅️ Назад")
+async def back(message: Message):
+    await message.answer("↩ CAM", reply_markup=wizard_type())
+
+
 @router.message(F.text == "Сгенерировать")
 async def generate(message: Message):
 
