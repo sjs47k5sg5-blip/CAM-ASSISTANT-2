@@ -3,17 +3,28 @@ from dataclasses import dataclass
 
 @dataclass
 class CamState:
+
     step: int = 0
 
-    size_x: float = 0.0
-    size_y: float = 0.0
-    size_z: float = 0.0
+    # geometry
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
 
-    tool: float = 0.0
-    corner_value: float = 0.0
+    material: str = "ALU"
 
     zero: str = "CENTER"
-    mode: str = "CONTOUR"
+    zero_z: str = "TOP"
+
+    corner_mode: str = "STRAIGHT"
+    corner_target: str = "ALL"
+    corner_value: float = 0.0
+
+    allowance: float = 0.0
+
+    tool_d: float = 0.0
+    finish: bool = False
+    finish_pass: str = "NO"
 
 
 CAM_DB = {}
