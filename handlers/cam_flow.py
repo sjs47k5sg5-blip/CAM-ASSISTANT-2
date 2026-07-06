@@ -13,25 +13,31 @@ def state(uid: int) -> CamState:
 
 
 # =========================
-# ENTRY
+# ENTRY MILLING MENU
 # =========================
 @router.message(F.text == "⚙ Фрезерная обработка")
-async def milling(message: Message):
-    await message.answer("📐 Выберите: Контур")
+async def milling_menu(message: Message):
+    await message.answer(
+        "⚙ ФРЕЗЕРОВКА\n\n"
+        "📐 Контур\n"
+        "📦 Карман\n"
+        "📏 Обводка"
+    )
 
 
 # =========================
-# START CONTOUR
+# CONTOUR START
 # =========================
 @router.message(F.text == "📐 Контур")
-async def contour(message: Message):
+async def contour_start(message: Message):
     u = state(message.from_user.id)
     u.step = 1
-    await message.answer("📏 Шаг 1: Размер детали (X Y Z)")
+
+    await message.answer("📐 КОНТУР\nВведите параметры")
 
 
 # =========================
-# SIZE INPUT
+# SIZE
 # =========================
 @router.message(F.text.regexp(r"^\d+ \d+ \d+$"))
 async def size(message: Message):
@@ -47,7 +53,7 @@ async def size(message: Message):
     u.z = float(z)
 
     u.step = 2
-    await message.answer("🔧 Шаг 2: Инструмент (диаметр)")
+    await message.answer("🔧 Размер сохранён\nВведите диаметр инструмента")
 
 
 # =========================
@@ -61,9 +67,11 @@ async def tool(message: Message):
         return
 
     u.tool_d = float(message.text)
-    u.step = 3
 
-    await message.answer("📍 Шаг 3: Ноль детали (CENTER / TL / TR / BL / BR)")
+    u.step = 3
+    await message.answer(
+        "📍 Ноль детали:\nCENTER / TL / TR / BL / BR"
+    )
 
 
 # =========================
@@ -79,7 +87,7 @@ async def zero(message: Message):
     u.zero = message.text
     u.step = 4
 
-    await message.answer("📍 Шаг 4: Ноль Z (TOP / BOTTOM)")
+    await message.answer("📍 Ноль Z:\nTOP / BOTTOM")
 
 
 # =========================
@@ -95,11 +103,14 @@ async def zeroz(message: Message):
     u.zero_z = message.text
     u.step = 5
 
-    await message.answer("⚙ Шаг 5: Углы (Все / ЛВ / ЛН / ПВ / ПН)")
+    await message.answer(
+        "⚙ Обработка углов:\n"
+        "Все / ЛВ / ЛН / ПВ / ПН"
+    )
 
 
 # =========================
-# CORNER TARGET (🔥 FIXED STEP LOCK)
+# CORNER TARGET
 # =========================
 @router.message(F.text.in_(["Все","ЛВ","ЛН","ПВ","ПН"]))
 async def corner_target(message: Message):
@@ -111,7 +122,7 @@ async def corner_target(message: Message):
     u.corner_target = message.text
     u.step = 6
 
-    await message.answer("Введите тип: радиус / фаска / острые")
+    await message.answer("Введите тип угла: радиус / фаска / острые")
 
 
 # =========================
@@ -143,11 +154,11 @@ async def corner_value(message: Message):
     u.corner_value = float(message.text)
     u.step = 8
 
-    await message.answer("✔ Параметры готовы → нажмите ГЕНЕРАЦИЯ")
+    await message.answer("✔ Параметры собраны → нажмите ГЕНЕРАЦИЯ")
 
 
 # =========================
-# GENERATE
+# GENERATE (CONNECT ENGINE)
 # =========================
 @router.message(F.text == "ГЕНЕРАЦИЯ")
 async def generate(message: Message):
