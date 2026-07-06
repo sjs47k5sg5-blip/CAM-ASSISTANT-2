@@ -6,8 +6,13 @@ router = Router()
 
 @router.message(F.text == "ℹ О программе")
 async def about(message: Message):
+
     await message.answer(
-        "CAM Assistant V1 FINAL\n"
-        "Status: ACTIVE\n"
-        "Engine: CUSTOM CAM CORE"
+        "CAM Assistant\n\n"
+        "Версия: V4 Development\n\n"
+        "Функции:\n"
+        "• Генерация G-кода\n"
+        "• Контурная обработка\n"
+        "• CAM Wizard\n\n"
+        "Разработка продолжается."
     )

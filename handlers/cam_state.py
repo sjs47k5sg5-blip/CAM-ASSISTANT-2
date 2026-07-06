@@ -1,24 +1,38 @@
 from dataclasses import dataclass
 
-
 @dataclass
 class CamState:
-    step: int = 0
 
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
+    # Общий экран
+    screen: str = "main"
 
+    # Размер детали
+    size_x: float = 0
+    size_y: float = 0
+    size_z: float = 0
+
+    # Материал
     material: str = ""
-    zero: str = ""
-    zero_z: str = ""
 
-    corner_target: str = ""
-    corner_mode: str = ""
-    corner_value: float = 0.0
+    # Ноль
+    zero: str = "CENTER"
+    zero_z: str = "TOP"
 
-    allowance: float = 0.0
-    tool_d: float = 0.0
+    # Углы
+    corner_type: str = "SHARP"
+    corner_select: str = "ALL"
+    corner_value: float = 0
+
+    # Припуск
+    allowance: float = 0
+    finish_pass: bool = False
+    finish_tool: bool = False
+
+    # Инструмент
+    tool_diameter: float = 0
+
+    # Проверка заполнения
+    ready: bool = False
 
 
 CAM_DB = {}
