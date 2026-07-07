@@ -5,6 +5,7 @@ from aiogram.types import (
     InlineKeyboardButton,
 )
 from aiogram.fsm.context import FSMContext
+from aiogram.exceptions import TelegramBadRequest
 
 router = Router()
 
@@ -40,13 +41,36 @@ async def ready_click(
 
     if errors:
 
-        await callback.message.answer(
+        try:
 
-            "❌ Заполнены не все параметры.\n\n"
-            "Необходимо заполнить:\n\n"
-            + "\n".join(errors)
+            await callback.message.edit_text(
 
-        )
+                "❌ Заполнены не все параметры.\n\n"
+                "Необходимо заполнить:\n\n"
+                + "\n".join(errors),
+
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(
+                                text="⬅ Назад",
+                                callback_data="back_menu"
+                            )
+                        ]
+                    ]
+                )
+
+            )
+
+        except TelegramBadRequest:
+
+            await callback.message.answer(
+
+                "❌ Заполнены не все параметры.\n\n"
+                "Необходимо заполнить:\n\n"
+                + "\n".join(errors)
+
+            )
 
         await callback.answer()
 

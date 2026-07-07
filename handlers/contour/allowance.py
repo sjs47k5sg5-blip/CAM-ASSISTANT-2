@@ -7,7 +7,7 @@ from aiogram.types import (
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 
-from .menu import render_menu
+from .ui import show_main_menu
 
 router = Router()
 
@@ -17,42 +17,34 @@ router = Router()
 # ==========================================
 
 @router.callback_query(F.data == "allowance")
-async def allowance_click(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+async def allowance_click(callback: CallbackQuery, state: FSMContext):
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-
             [
                 InlineKeyboardButton(
                     text="0 мм",
                     callback_data="allow_0"
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     text="0.2 мм",
                     callback_data="allow_0.2"
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     text="0.5 мм",
                     callback_data="allow_0.5"
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     text="1.0 мм",
                     callback_data="allow_1.0"
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     text="⬅ Назад",
@@ -80,10 +72,7 @@ async def allowance_click(
 # ==========================================
 
 @router.callback_query(F.data.startswith("allow_"))
-async def allowance_save(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+async def allowance_save(callback: CallbackQuery, state: FSMContext):
 
     allowance = float(callback.data.replace("allow_", ""))
 
@@ -98,30 +87,17 @@ async def allowance_save(
             finish_tool=False
         )
 
-        text, kb = await render_menu(state)
-
-        try:
-            await callback.message.edit_text(
-                text,
-                parse_mode="HTML",
-                reply_markup=kb
-            )
-        except TelegramBadRequest:
-            pass
-
-        await callback.answer()
+        await show_main_menu(callback, state)
         return
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-
             [
                 InlineKeyboardButton(
                     text="✅ Да",
                     callback_data="finish_yes"
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     text="❌ Нет",
@@ -144,39 +120,22 @@ async def allowance_save(
 # ==========================================
 
 @router.callback_query(F.data == "finish_no")
-async def finish_no(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+async def finish_no(callback: CallbackQuery, state: FSMContext):
 
     await state.update_data(
         finish_pass=False,
         finish_tool=False
     )
 
-    text, kb = await render_menu(state)
-
-    try:
-        await callback.message.edit_text(
-            text,
-            parse_mode="HTML",
-            reply_markup=kb
-        )
-    except TelegramBadRequest:
-        pass
-
-    await callback.answer()
+    await show_main_menu(callback, state)
 
 
 # ==========================================
-# ЧИСТОВОЙ
+# ЧИСТОВОЙ ПРОХОД
 # ==========================================
 
 @router.callback_query(F.data == "finish_yes")
-async def finish_yes(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+async def finish_yes(callback: CallbackQuery, state: FSMContext):
 
     await state.update_data(
         finish_pass=True
@@ -184,17 +143,15 @@ async def finish_yes(
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-
             [
                 InlineKeyboardButton(
-                    text="Тем же инструментом",
+                    text="🔧 Тем же инструментом",
                     callback_data="finish_same"
                 )
             ],
-
             [
                 InlineKeyboardButton(
-                    text="Другим инструментом",
+                    text="🛠 Другим инструментом",
                     callback_data="finish_other"
                 )
             ]
@@ -202,7 +159,7 @@ async def finish_yes(
     )
 
     await callback.message.edit_text(
-        "Выберите инструмент для чистового прохода.",
+        "Каким инструментом выполнить чистовой проход?",
         reply_markup=keyboard
     )
 
@@ -214,27 +171,13 @@ async def finish_yes(
 # ==========================================
 
 @router.callback_query(F.data == "finish_same")
-async def finish_same(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+async def finish_same(callback: CallbackQuery, state: FSMContext):
 
     await state.update_data(
         finish_tool=False
     )
 
-    text, kb = await render_menu(state)
-
-    try:
-        await callback.message.edit_text(
-            text,
-            parse_mode="HTML",
-            reply_markup=kb
-        )
-    except TelegramBadRequest:
-        pass
-
-    await callback.answer()
+    await show_main_menu(callback, state)
 
 
 # ==========================================
@@ -242,24 +185,10 @@ async def finish_same(
 # ==========================================
 
 @router.callback_query(F.data == "finish_other")
-async def finish_other(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+async def finish_other(callback: CallbackQuery, state: FSMContext):
 
     await state.update_data(
         finish_tool=True
     )
 
-    text, kb = await render_menu(state)
-
-    try:
-        await callback.message.edit_text(
-            text,
-            parse_mode="HTML",
-            reply_markup=kb
-        )
-    except TelegramBadRequest:
-        pass
-
-    await callback.answer()
+    await show_main_menu(callback, state)

@@ -8,7 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 
 from .states import ContourWizard
-from .menu import render_menu
+from .ui import show_main_menu
 
 router = Router()
 
@@ -72,12 +72,18 @@ async def zero_click(
     )
 
     try:
+
         await callback.message.edit_text(
+
             "📍 <b>Ноль детали</b>\n\n"
             "Выберите положение нуля.",
+
             parse_mode="HTML",
+
             reply_markup=keyboard
+
         )
+
     except TelegramBadRequest:
         pass
 
@@ -114,23 +120,7 @@ async def zero_save(
         ContourWizard.menu
     )
 
-    text, kb = await render_menu(state)
-
-    try:
-        await callback.message.edit_text(
-            text,
-            parse_mode="HTML",
-            reply_markup=kb
-        )
-    except TelegramBadRequest:
-        await callback.message.answer("✅ Ноль детали сохранён.")
-        await callback.message.answer(
-            text,
-            parse_mode="HTML",
-            reply_markup=kb
-        )
-
-    await callback.answer()
+    await show_main_menu(callback, state)
 
 
 # ==========================================
@@ -171,12 +161,18 @@ async def zero_z_click(
     )
 
     try:
+
         await callback.message.edit_text(
+
             "📍 <b>Ноль по Z</b>\n\n"
             "Выберите положение нуля по оси Z.",
+
             parse_mode="HTML",
+
             reply_markup=keyboard
+
         )
+
     except TelegramBadRequest:
         pass
 
@@ -187,7 +183,14 @@ async def zero_z_click(
 # СОХРАНИТЬ НОЛЬ Z
 # ==========================================
 
-@router.callback_query(F.data.in_(["zeroz_TOP", "zeroz_BOTTOM"]))
+@router.callback_query(
+    F.data.in_(
+        [
+            "zeroz_TOP",
+            "zeroz_BOTTOM",
+        ]
+    )
+)
 async def zero_z_save(
     callback: CallbackQuery,
     state: FSMContext
@@ -203,20 +206,4 @@ async def zero_z_save(
         ContourWizard.menu
     )
 
-    text, kb = await render_menu(state)
-
-    try:
-        await callback.message.edit_text(
-            text,
-            parse_mode="HTML",
-            reply_markup=kb
-        )
-    except TelegramBadRequest:
-        await callback.message.answer("✅ Ноль по Z сохранён.")
-        await callback.message.answer(
-            text,
-            parse_mode="HTML",
-            reply_markup=kb
-        )
-
-    await callback.answer()
+    await show_main_menu(callback, state)

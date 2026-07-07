@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 
 from .states import ContourWizard
-from .menu import render_menu
+from .ui import show_main_menu
 
 router = Router()
 
@@ -37,7 +37,7 @@ async def corner_click(callback: CallbackQuery, state: FSMContext):
             ],
             [
                 InlineKeyboardButton(
-                    text="⬜ Острые",
+                    text="⬜ Острые углы",
                     callback_data="corner_SHARP"
                 )
             ],
@@ -53,7 +53,7 @@ async def corner_click(callback: CallbackQuery, state: FSMContext):
     try:
         await callback.message.edit_text(
             "⚙ <b>Обработка углов</b>\n\n"
-            "Выберите тип.",
+            "Выберите тип обработки.",
             parse_mode="HTML",
             reply_markup=keyboard
         )
@@ -80,18 +80,10 @@ async def corner_type(callback: CallbackQuery, state: FSMContext):
             corner_value=0
         )
 
-        text, kb = await render_menu(state)
+        await state.set_state(ContourWizard.menu)
 
-        try:
-            await callback.message.edit_text(
-                text,
-                parse_mode="HTML",
-                reply_markup=kb
-            )
-        except TelegramBadRequest:
-            pass
+        await show_main_menu(callback, state)
 
-        await callback.answer()
         return
 
     await state.update_data(
@@ -140,7 +132,7 @@ async def corner_type(callback: CallbackQuery, state: FSMContext):
     )
 
     await callback.message.edit_text(
-        "Выберите углы.",
+        "Выберите углы для обработки.",
         reply_markup=keyboard
     )
 
@@ -165,8 +157,7 @@ async def corner_position(callback: CallbackQuery, state: FSMContext):
     )
 
     await callback.message.answer(
-        "Введите размер радиуса или фаски.\n\n"
-        "Например:\n"
+        "Введите радиус или фаску (мм).\n\n"
         "<code>2</code>",
         parse_mode="HTML"
     )
@@ -175,20 +166,15 @@ async def corner_position(callback: CallbackQuery, state: FSMContext):
 
 
 # ==========================================
-# РАЗМЕР
+# ВВОД РАЗМЕРА
 # ==========================================
 
 @router.message(ContourWizard.corner_value)
-async def corner_value(
-    message: Message,
-    state: FSMContext
-):
+async def corner_value(message: Message, state: FSMContext):
 
     try:
 
-        value = float(
-            message.text.replace(",", ".")
-        )
+        value = float(message.text.replace(",", "."))
 
         if value < 0:
             raise ValueError
@@ -196,7 +182,7 @@ async def corner_value(
     except ValueError:
 
         await message.answer(
-            "Введите корректное число."
+            "❌ Введите корректное число."
         )
 
         return
@@ -209,14 +195,8 @@ async def corner_value(
         ContourWizard.menu
     )
 
-    text, kb = await render_menu(state)
-
     await message.answer(
-        f"✅ Размер {value} мм сохранён."
+        f"✅ Размер сохранён: {value} мм"
     )
 
-    await message.answer(
-        text,
-        parse_mode="HTML",
-        reply_markup=kb
-    )
+    await show_main_menu(message, state)

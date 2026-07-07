@@ -1,5 +1,4 @@
-from aiogram import Router
-from aiogram import F
+from aiogram import Router, F
 from aiogram.types import (
     CallbackQuery,
     Message,
@@ -7,7 +6,7 @@ from aiogram.types import (
 from aiogram.fsm.context import FSMContext
 
 from .states import ContourWizard
-from .menu import render_menu
+from .ui import show_main_menu
 
 router = Router()
 
@@ -27,14 +26,11 @@ async def tool_click(
     await callback.message.answer(
 
         "🔧 <b>Инструмент</b>\n\n"
-
-        "Введите:\n\n"
-
-        "<code>Номер Диаметр</code>\n\n"
-
-        "Например:\n"
-
-        "<code>3 10</code>",
+        "Введите номер инструмента и диаметр.\n\n"
+        "<code>3 10</code>\n\n"
+        "где\n"
+        "3 -- номер инструмента\n"
+        "10 -- диаметр фрезы",
 
         parse_mode="HTML"
 
@@ -69,14 +65,12 @@ async def tool_input(
         if diameter <= 0:
             raise ValueError
 
-    except Exception:
+    except ValueError:
 
         await message.answer(
 
             "❌ Неверный формат.\n\n"
-
             "Введите:\n"
-
             "<code>3 10</code>",
 
             parse_mode="HTML"
@@ -88,7 +82,6 @@ async def tool_input(
     await state.update_data(
 
         tool_number=tool,
-
         tool_diameter=diameter
 
     )
@@ -97,24 +90,12 @@ async def tool_input(
         ContourWizard.menu
     )
 
-    text, kb = await render_menu(state)
-
     await message.answer(
 
-        "✅ Инструмент сохранён\n\n"
-
+        f"✅ Инструмент сохранён\n\n"
         f"T{tool}\n"
-
         f"Ø{diameter} мм"
 
     )
 
-    await message.answer(
-
-        text,
-
-        parse_mode="HTML",
-
-        reply_markup=kb
-
-    )
+    await show_main_menu(message, state)

@@ -26,7 +26,9 @@ class FanucOiMFPost(BasePostProcessor):
 
         self.lines.append("%")
         self.lines.append("O0001")
+        self.lines.append("")
 
+        self.lines.append("(CAM ASSISTANT)")
         self.lines.append("")
 
         self.lines.append("G21")
@@ -35,25 +37,18 @@ class FanucOiMFPost(BasePostProcessor):
         self.lines.append("G40")
         self.lines.append("G49")
         self.lines.append("G80")
-
         self.lines.append("")
 
         self.lines.append("G54")
-
         self.lines.append("")
 
-        self.lines.append(
-            f"T{p.tool.number} M6"
-        )
-
+        self.lines.append(f"T{p.tool.number} M6")
+        self.lines.append(f"S{p.tool.spindle} M3")
         self.lines.append(
             f"G43 H{p.tool.number} Z{p.machine.safe_z:.3f}"
         )
 
-        self.lines.append(
-            f"M3 S{p.tool.spindle}"
-        )
-
+        self.lines.append("G0 Z5.000")
         self.lines.append("")
 
     # =====================================
@@ -62,20 +57,21 @@ class FanucOiMFPost(BasePostProcessor):
 
     def footer(self):
 
+        p = self.project
+
         self.lines.append("")
+        self.lines.append(f"G0 Z{p.machine.safe_z:.3f}")
 
         self.lines.append("M5")
 
         self.lines.append("")
 
-        self.lines.append("G91 G28 Z0")
-
-        self.lines.append("G91 G28 X0 Y0")
+        self.lines.append("G53 G0 Z0")
+        self.lines.append("G53 G0 Y0")
 
         self.lines.append("")
 
         self.lines.append("M30")
-
         self.lines.append("%")
 
     # =====================================
@@ -85,9 +81,7 @@ class FanucOiMFPost(BasePostProcessor):
     def rapid(self, cmd):
 
         self.lines.append(
-
             "G0 " + self.xyz(cmd)
-
         )
 
     # =====================================
@@ -99,29 +93,24 @@ class FanucOiMFPost(BasePostProcessor):
         line = "G1 " + self.xyz(cmd)
 
         if cmd.feed is not None:
-
             line += f" F{cmd.feed:.0f}"
 
         self.lines.append(line)
-
-    # =====================================
+         # =====================================
     # G2
     # =====================================
 
     def arc_cw(self, cmd):
 
         line = (
-
             f"G2 "
             f"X{cmd.x:.3f} "
             f"Y{cmd.y:.3f} "
             f"I{cmd.i:.3f} "
             f"J{cmd.j:.3f}"
-
         )
 
         if cmd.feed is not None:
-
             line += f" F{cmd.feed:.0f}"
 
         self.lines.append(line)
@@ -133,34 +122,30 @@ class FanucOiMFPost(BasePostProcessor):
     def arc_ccw(self, cmd):
 
         line = (
-
             f"G3 "
             f"X{cmd.x:.3f} "
             f"Y{cmd.y:.3f} "
             f"I{cmd.i:.3f} "
             f"J{cmd.j:.3f}"
-
         )
 
         if cmd.feed is not None:
-
             line += f" F{cmd.feed:.0f}"
 
         self.lines.append(line)
 
     # =====================================
-    # TOOL
+    # TOOL CHANGE
     # =====================================
 
     def tool_change(self, cmd):
 
+        self.lines.append(f"T{cmd.tool} M6")
+        self.lines.append(f"S{cmd.rpm} M3")
         self.lines.append(
-            f"T{cmd.tool} M6"
+            f"G43 H{cmd.length_offset} Z{self.project.machine.safe_z:.3f}"
         )
-
-        self.lines.append(
-            f"G43 H{cmd.length_offset}"
-        )
+        self.lines.append("G0 Z5.000")
 
     # =====================================
     # SPINDLE
@@ -169,16 +154,9 @@ class FanucOiMFPost(BasePostProcessor):
     def spindle_on(self, cmd):
 
         if cmd.clockwise:
-
-            self.lines.append(
-                f"M3 S{cmd.rpm}"
-            )
-
+            self.lines.append(f"S{cmd.rpm} M3")
         else:
-
-            self.lines.append(
-                f"M4 S{cmd.rpm}"
-            )
+            self.lines.append(f"S{cmd.rpm} M4")
 
     def spindle_off(self, cmd):
 
@@ -202,6 +180,4 @@ class FanucOiMFPost(BasePostProcessor):
 
     def comment(self, cmd):
 
-        self.lines.append(
-            f"({cmd.text})"
-        )
+        self.lines.append(f"({cmd.text})")

@@ -3,7 +3,7 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 
 from .states import ContourWizard
-from .menu import render_menu
+from .ui import show_main_menu
 
 router = Router()
 
@@ -13,23 +13,17 @@ router = Router()
 # ==========================================
 
 @router.callback_query(F.data == "size")
-async def size_click(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+async def size_click(callback: CallbackQuery, state: FSMContext):
 
     await state.set_state(ContourWizard.size)
 
     await callback.message.answer(
-
         "📏 <b>Размер детали</b>\n\n"
         "Введите размеры детали.\n\n"
         "Формат:\n"
         "<code>30 20 15</code>\n\n"
         "X Y Z",
-
         parse_mode="HTML"
-
     )
 
     await callback.answer()
@@ -40,10 +34,7 @@ async def size_click(
 # ==========================================
 
 @router.message(ContourWizard.size)
-async def size_input(
-    message: Message,
-    state: FSMContext
-):
+async def size_input(message: Message, state: FSMContext):
 
     try:
 
@@ -62,47 +53,29 @@ async def size_input(
     except ValueError:
 
         await message.answer(
-
             "❌ Неверный формат.\n\n"
-            "Введите три числа.\n\n"
-            "Например:\n"
+            "Введите:\n"
             "<code>30 20 15</code>",
-
             parse_mode="HTML"
-
         )
 
         return
 
     await state.update_data(
-
         size_x=x,
         size_y=y,
         size_z=z
-
     )
 
-    await state.set_state(
-        ContourWizard.menu
-    )
+    await state.set_state(ContourWizard.menu)
 
-    text, kb = await render_menu(state)
-
+    # Только одно информационное сообщение
     await message.answer(
-
         f"✅ Размер сохранён\n\n"
         f"X = {x}\n"
         f"Y = {y}\n"
         f"Z = {z}"
-
     )
 
-    await message.answer(
-
-        text,
-
-        parse_mode="HTML",
-
-        reply_markup=kb
-
-    )
+    # Возвращаемся в единое меню
+    await show_main_menu(message, state)
