@@ -72,18 +72,12 @@ async def zero_click(
     )
 
     try:
-
         await callback.message.edit_text(
-
             "📍 <b>Ноль детали</b>\n\n"
             "Выберите положение нуля.",
-
             parse_mode="HTML",
-
             reply_markup=keyboard
-
         )
-
     except TelegramBadRequest:
         pass
 
@@ -91,10 +85,20 @@ async def zero_click(
 
 
 # ==========================================
-# СОХРАНИТЬ НОЛЬ
+# СОХРАНИТЬ НОЛЬ ДЕТАЛИ
 # ==========================================
 
-@router.callback_query(F.data.startswith("zero_"))
+@router.callback_query(
+    F.data.in_(
+        [
+            "zero_CENTER",
+            "zero_TL",
+            "zero_TR",
+            "zero_BL",
+            "zero_BR",
+        ]
+    )
+)
 async def zero_save(
     callback: CallbackQuery,
     state: FSMContext
@@ -113,23 +117,13 @@ async def zero_save(
     text, kb = await render_menu(state)
 
     try:
-
         await callback.message.edit_text(
-
             text,
-
             parse_mode="HTML",
-
             reply_markup=kb
-
         )
-
     except TelegramBadRequest:
-
-        await callback.message.answer(
-            "✅ Ноль детали сохранён."
-        )
-
+        await callback.message.answer("✅ Ноль детали сохранён.")
         await callback.message.answer(
             text,
             parse_mode="HTML",
@@ -140,7 +134,7 @@ async def zero_save(
 
 
 # ==========================================
-# НОЛЬ Z
+# НОЛЬ ПО Z
 # ==========================================
 
 @router.callback_query(F.data == "zero_z")
@@ -177,18 +171,12 @@ async def zero_z_click(
     )
 
     try:
-
         await callback.message.edit_text(
-
             "📍 <b>Ноль по Z</b>\n\n"
-            "Выберите положение нуля.",
-
+            "Выберите положение нуля по оси Z.",
             parse_mode="HTML",
-
             reply_markup=keyboard
-
         )
-
     except TelegramBadRequest:
         pass
 
@@ -199,7 +187,7 @@ async def zero_z_click(
 # СОХРАНИТЬ НОЛЬ Z
 # ==========================================
 
-@router.callback_query(F.data.startswith("zeroz_"))
+@router.callback_query(F.data.in_(["zeroz_TOP", "zeroz_BOTTOM"]))
 async def zero_z_save(
     callback: CallbackQuery,
     state: FSMContext
@@ -218,23 +206,13 @@ async def zero_z_save(
     text, kb = await render_menu(state)
 
     try:
-
         await callback.message.edit_text(
-
             text,
-
             parse_mode="HTML",
-
             reply_markup=kb
-
         )
-
     except TelegramBadRequest:
-
-        await callback.message.answer(
-            "✅ Ноль по Z сохранён."
-        )
-
+        await callback.message.answer("✅ Ноль по Z сохранён.")
         await callback.message.answer(
             text,
             parse_mode="HTML",
