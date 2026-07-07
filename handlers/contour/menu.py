@@ -28,11 +28,7 @@ async def render_menu(state: FSMContext):
         f"{status(data.get('zero') is not None)} Ноль детали\n"
         f"{status(data.get('zero_z') is not None)} Ноль Z\n"
         f"{status(data.get('tool_diameter') is not None)} Инструмент\n"
-        f"{status(data.get('step_z') is not None)} Шаг по Z\n"
-        f"{status(data.get('corner_type') is not None)} Обработка углов\n"
-        f"{status(data.get('allowance') is not None)} Припуск\n"
-        f"{status(data.get('roughing_enabled') is not None)} Черновая обработка\n"
-        f"{status(data.get('cut_direction') is not None)} Направление обработки\n\n"
+        f"{status(data.get('processing_ready', False))} Обработка\n\n"
 
         "Выберите параметр:"
     )
@@ -70,20 +66,6 @@ async def render_menu(state: FSMContext):
 
             [
                 InlineKeyboardButton(
-                    text="⚙ Обработка углов",
-                    callback_data="corner"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="📉 Припуск",
-                    callback_data="allowance"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
                     text="🔧 Инструмент",
                     callback_data="tool"
                 )
@@ -91,15 +73,8 @@ async def render_menu(state: FSMContext):
 
             [
                 InlineKeyboardButton(
-                    text="🪓 Черновая обработка",
-                    callback_data="roughing"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="🧭 Направление обработки",
-                    callback_data="direction"
+                    text="🛠 Обработка",
+                    callback_data="processing"
                 )
             ],
 

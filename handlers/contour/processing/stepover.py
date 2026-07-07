@@ -6,44 +6,65 @@ from aiogram.types import (
 )
 from aiogram.fsm.context import FSMContext
 
-from .ui import show_main_menu
+from ..states import ContourWizard
 
 router = Router()
 
 
 # ==========================================
-# НАПРАВЛЕНИЕ ОБРАБОТКИ
+# БОКОВОЙ ШАГ
 # ==========================================
 
-@router.callback_query(F.data == "direction")
-async def direction_click(
+@router.callback_query(F.data.startswith("stepover_"))
+async def stepover_save(
     callback: CallbackQuery,
-    state: FSMContext
+    state: FSMContext,
 ):
+
+    stepover = float(
+        callback.data.replace(
+            "stepover_",
+            ""
+        )
+    )
+
+    await state.update_data(
+        roughing_stepover=stepover
+    )
+
+    await state.set_state(
+        ContourWizard.direction
+    )
 
     keyboard = InlineKeyboardMarkup(
 
         inline_keyboard=[
 
             [
+
                 InlineKeyboardButton(
                     text="➡ Попутное",
                     callback_data="dir_CLIMB"
                 )
+
             ],
 
             [
+
                 InlineKeyboardButton(
                     text="⬅ Встречное",
                     callback_data="dir_CONVENTIONAL"
                 )
+
             ],
 
             [
+
                 InlineKeyboardButton(
                     text="⬅ Назад",
-                    callback_data="back_menu"
+                    callback_data="processing"
                 )
+
             ]
 
         ]
@@ -62,37 +83,3 @@ async def direction_click(
     )
 
     await callback.answer()
-
-
-# ==========================================
-# СОХРАНИТЬ НАПРАВЛЕНИЕ
-# ==========================================
-
-@router.callback_query(
-    F.data.in_(
-        [
-            "dir_CLIMB",
-            "dir_CONVENTIONAL",
-        ]
-    )
-)
-async def direction_save(
-    callback: CallbackQuery,
-    state: FSMContext
-):
-
-    direction = callback.data.replace(
-        "dir_",
-        ""
-    )
-
-    await state.update_data(
-
-        cut_direction=direction
-
-    )
-
-    await show_main_menu(
-        callback,
-        state
-    )

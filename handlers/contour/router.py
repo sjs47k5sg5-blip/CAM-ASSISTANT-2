@@ -9,13 +9,13 @@ router = Router()
 
 
 # ==========================================
-# ЗАПУСК МАСТЕРА "КОНТУР"
+# ЗАПУСК МАСТЕРА
 # ==========================================
 
 @router.message(F.text == "📐 Контур")
 async def contour_start(
     message: Message,
-    state: FSMContext
+    state: FSMContext,
 ):
 
     await state.clear()
@@ -32,7 +32,7 @@ async def contour_start(
         # Материал
         material=None,
 
-        # Ноль детали
+        # Ноль
         zero=None,
         zero_z=None,
 
@@ -40,26 +40,29 @@ async def contour_start(
         tool_number=None,
         tool_diameter=None,
 
-        # Шаг по Z
-        step_z=None,
+        # ===== Обработка =====
 
-        # Обработка углов
-        corner_type=None,
-        corner_select=None,
-        corner_value=None,
+        processing_ready=False,
 
-        # Припуск
-        allowance=None,
+        roughing_enabled=False,
+
+        step_z=2.0,
+
+        roughing_stepover=0.6,
+
+        cut_direction="CLIMB",
+
+        allowance=0.0,
+
         finish_pass=False,
+
         finish_tool=False,
 
-        # Черновая обработка
-        roughing_enabled=None,
-        roughing_stepover=None,
-        roughing_direction=None,
+        corner_type="SHARP",
 
-        # Направление обработки
-        cut_direction=None,
+        corner_select="ALL",
+
+        corner_value=0.0,
 
     )
 
@@ -73,18 +76,15 @@ async def contour_start(
 
 
 # ==========================================
-# ПОДКЛЮЧЕНИЕ РОУТЕРОВ
+# ROUTERS
 # ==========================================
 
 from .menu import router as menu_router
 from .size import router as size_router
 from .material import router as material_router
 from .zero import router as zero_router
-from .corner import router as corner_router
-from .allowance import router as allowance_router
 from .tool import router as tool_router
-from .roughing import router as roughing_router
-from .direction import router as direction_router
+from .processing.router import router as processing_router
 from .ready import router as ready_router
 from .generate import router as generate_router
 
@@ -92,10 +92,7 @@ router.include_router(menu_router)
 router.include_router(size_router)
 router.include_router(material_router)
 router.include_router(zero_router)
-router.include_router(corner_router)
-router.include_router(allowance_router)
 router.include_router(tool_router)
-router.include_router(roughing_router)
-router.include_router(direction_router)
+router.include_router(processing_router)
 router.include_router(ready_router)
 router.include_router(generate_router)
