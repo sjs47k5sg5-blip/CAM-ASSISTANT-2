@@ -43,7 +43,12 @@ class ProjectManager:
 
             corner=Corner(
                 kind="SHARP",
-                position="ALL",
+                positions=[
+                    "TL",
+                    "TR",
+                    "BL",
+                    "BR",
+                ],
                 value=0.0,
             ),
 
@@ -63,8 +68,8 @@ class ProjectManager:
             machine=Machine(
                 name="Victor Center 136",
                 controller="Fanuc Oi-MF",
-                safe_z=100,
-                rapid_z=5,
+                safe_z=100.0,
+                rapid_z=5.0,
                 spindle_max=15000,
             ),
         )
