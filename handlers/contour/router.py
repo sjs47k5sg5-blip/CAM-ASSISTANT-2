@@ -2,8 +2,8 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
-from keyboards.contour_inline import contour_menu
 from .states import ContourWizard
+from .menu import render_menu
 
 router = Router()
 
@@ -49,18 +49,14 @@ async def contour_start(
         allowance=None,
         finish_pass=False,
         finish_tool=False,
-
     )
 
+    text, kb = await render_menu(state)
+
     await message.answer(
-
-        "📐 <b>КОНТУР</b>\n\n"
-        "Выберите параметр.",
-
+        text,
         parse_mode="HTML",
-
-        reply_markup=contour_menu()
-
+        reply_markup=kb
     )
 
 
