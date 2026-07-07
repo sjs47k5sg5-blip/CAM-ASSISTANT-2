@@ -8,6 +8,10 @@ from .states import ContourWizard
 router = Router()
 
 
+# ==========================================
+# ЗАПУСК МАСТЕРА "КОНТУР"
+# ==========================================
+
 @router.message(F.text == "📐 Контур")
 async def contour_start(
     message: Message,
@@ -19,42 +23,67 @@ async def contour_start(
     await state.set_state(ContourWizard.menu)
 
     await state.update_data(
+
+        # Размер детали
         size_x=None,
         size_y=None,
         size_z=None,
 
+        # Материал
         material=None,
 
+        # Ноль
         zero=None,
         zero_z=None,
 
-        tool_number=1,
+        # Инструмент
+        tool_number=None,
         tool_diameter=None,
 
-        allowance=0,
+        # Углы
+        corner_type=None,
+        corner_select=None,
+        corner_value=None,
 
+        # Припуск
+        allowance=None,
         finish_pass=False,
         finish_tool=False,
 
-        corner_type="SHARP",
-        corner_select="ALL",
-        corner_value=0,
     )
 
     await message.answer(
-        "📐 <b>Контур</b>\n\n"
-        "Введите параметры обработки.",
+
+        "📐 <b>КОНТУР</b>\n\n"
+        "Выберите параметр.",
+
         parse_mode="HTML",
+
         reply_markup=contour_menu()
+
     )
 
 
-# -----------------------------------------
-# Подключаем внутренние роутеры
-# -----------------------------------------
+# ==========================================
+# ПОДКЛЮЧЕНИЕ РОУТЕРОВ
+# ==========================================
 
-from .handlers import router as handlers_router
+from .menu import router as menu_router
+from .size import router as size_router
+from .material import router as material_router
+from .zero import router as zero_router
+from .corner import router as corner_router
+from .allowance import router as allowance_router
+from .tool import router as tool_router
+from .ready import router as ready_router
 from .generate import router as generate_router
 
-router.include_router(handlers_router)
+router.include_router(menu_router)
+router.include_router(size_router)
+router.include_router(material_router)
+router.include_router(zero_router)
+router.include_router(corner_router)
+router.include_router(allowance_router)
+router.include_router(tool_router)
+router.include_router(ready_router)
 router.include_router(generate_router)
