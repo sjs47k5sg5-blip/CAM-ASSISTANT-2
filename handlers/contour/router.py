@@ -32,7 +32,7 @@ async def contour_start(
         # Материал
         material=None,
 
-        # Ноль
+        # Ноль детали
         zero=None,
         zero_z=None,
 
@@ -40,7 +40,10 @@ async def contour_start(
         tool_number=None,
         tool_diameter=None,
 
-        # Углы
+        # Шаг по Z
+        step_z=None,
+
+        # Обработка углов
         corner_type=None,
         corner_select=None,
         corner_value=None,
@@ -49,6 +52,15 @@ async def contour_start(
         allowance=None,
         finish_pass=False,
         finish_tool=False,
+
+        # Черновая обработка
+        roughing_enabled=None,
+        roughing_stepover=None,
+        roughing_direction=None,
+
+        # Направление обработки
+        cut_direction=None,
+
     )
 
     text, kb = await render_menu(state)
@@ -56,7 +68,7 @@ async def contour_start(
     await message.answer(
         text,
         parse_mode="HTML",
-        reply_markup=kb
+        reply_markup=kb,
     )
 
 
@@ -71,6 +83,8 @@ from .zero import router as zero_router
 from .corner import router as corner_router
 from .allowance import router as allowance_router
 from .tool import router as tool_router
+from .roughing import router as roughing_router
+from .direction import router as direction_router
 from .ready import router as ready_router
 from .generate import router as generate_router
 
@@ -81,5 +95,7 @@ router.include_router(zero_router)
 router.include_router(corner_router)
 router.include_router(allowance_router)
 router.include_router(tool_router)
+router.include_router(roughing_router)
+router.include_router(direction_router)
 router.include_router(ready_router)
 router.include_router(generate_router)

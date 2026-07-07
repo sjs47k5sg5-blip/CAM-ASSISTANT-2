@@ -86,6 +86,59 @@ class Finish:
 
 
 # ==========================================
+# MACHINING
+# ==========================================
+
+@dataclass
+class Machining:
+
+    # Направление обработки
+    direction: str = "CLIMB"          # CLIMB / CONVENTIONAL
+
+    # Черновая обработка
+    roughing: bool = False
+
+    # Боковой шаг (% от диаметра)
+    stepover: float = 0.6
+
+    # Шаг по Z
+    step_z: float = 2.0
+
+
+# ==========================================
+# TOOL COMPENSATION
+# ==========================================
+
+@dataclass
+class Compensation:
+
+    enabled: bool = False
+
+    side: str = "LEFT"      # LEFT / RIGHT
+
+    d_number: int = 1
+
+
+
+# ==========================================
+# ROUGHING
+# ==========================================
+
+@dataclass
+class Roughing:
+
+    enabled: bool = False
+
+    stepover: float = 0.6
+
+    strategy: str = "OUTSIDE_IN"
+
+    direction: str = "CLIMB"
+
+
+
+
+# ==========================================
 # MACHINE
 # ==========================================
 
@@ -119,6 +172,8 @@ class Project:
     corner: Corner
 
     finish: Finish
+
+    machining: Machining
 
     machine: Machine
 

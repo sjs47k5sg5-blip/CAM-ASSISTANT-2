@@ -5,6 +5,7 @@ from services.cam_engine.models import (
     Material,
     Corner,
     Finish,
+    Machining,
     Machine,
 )
 
@@ -22,7 +23,6 @@ class ProjectManager:
                 z=0.0,
                 zero="CENTER",
                 zero_z="TOP",
-                step_z=2.0,
             ),
 
             tool=Tool(
@@ -53,6 +53,13 @@ class ProjectManager:
                 another_tool=False,
             ),
 
+            machining=Machining(
+                direction="CLIMB",
+                roughing=False,
+                stepover=0.6,
+                step_z=2.0,
+            ),
+
             machine=Machine(
                 name="Victor Center 136",
                 controller="Fanuc Oi-MF",
@@ -60,5 +67,4 @@ class ProjectManager:
                 rapid_z=5,
                 spindle_max=15000,
             ),
-
         )
