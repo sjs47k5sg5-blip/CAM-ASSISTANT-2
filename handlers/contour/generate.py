@@ -1,10 +1,5 @@
-from io import BytesIO
-
 from aiogram import Router, F
-from aiogram.types import (
-    CallbackQuery,
-    BufferedInputFile,
-)
+from aiogram.types import CallbackQuery, BufferedInputFile
 from aiogram.fsm.context import FSMContext
 
 from services.cam_engine.engine import generate_contour
@@ -20,80 +15,48 @@ async def generate(callback: CallbackQuery, state: FSMContext):
 
     project = ProjectManager.new_project()
 
-    # -----------------------------------
     # Заготовка
-    # -----------------------------------
+    project.workpiece.x = data.get("size_x", 0.0)
+    project.workpiece.y = data.get("size_y", 0.0)
+    project.workpiece.z = data.get("size_z", 0.0)
 
-    project.workpiece.x = data["size_x"]
-    project.workpiece.y = data["size_y"]
-    project.workpiece.z = data["size_z"]
+    project.workpiece.zero = data.get("zero", "CENTER")
+    project.workpiece.zero_z = data.get("zero_z", "TOP")
 
-    project.workpiece.zero = data["zero"]
-    project.workpiece.zero_z = data["zero_z"]
-
-    # -----------------------------------
     # Материал
-    # -----------------------------------
+    project.material.name = data.get("material", "Steel")
 
-    project.material.name = data["material"]
-
-    # -----------------------------------
     # Инструмент
-    # -----------------------------------
+    project.tool.number = data.get("tool_number", 1)
+    project.tool.length_offset = project.tool.number
+    project.tool.diameter = data.get("tool_diameter", 10.0)
 
-    project.tool.number = data["tool_number"]
-    project.tool.diameter = data["tool_diameter"]
-
-    # -----------------------------------
     # Углы
-    # -----------------------------------
+    project.corner.kind = data.get("corner_type") or "SHARP"
+    project.corner.position = data.get("corner_select") or "ALL"
+    project.corner.value = data.get("corner_value") or 0.0
 
-    project.corner.kind = data["corner_type"]
-    project.corner.position = data["corner_select"]
-    project.corner.value = data["corner_value"]
-
-    # -----------------------------------
     # Припуск
-    # -----------------------------------
-
-    project.finish.allowance = data["allowance"]
-    project.finish.enabled = data["finish_pass"]
-    project.finish.another_tool = data["finish_tool"]
-
-    # -----------------------------------
-    # Генерация
-    # -----------------------------------
+    project.finish.allowance = data.get("allowance") or 0.0
+    project.finish.enabled = data.get("finish_pass", False)
+    project.finish.another_tool = data.get("finish_tool", False)
 
     try:
-
         gcode = generate_contour(project)
 
     except Exception as e:
-
         await callback.message.answer(
-
             f"❌ Ошибка генерации\n\n{e}"
-
         )
-
         await callback.answer()
-
         return
 
-    file = BufferedInputFile(
-
-        gcode.encode("utf-8"),
-
-        filename="Contour.nc"
-
-    )
-
     await callback.message.answer_document(
-
-        file,
-
+        BufferedInputFile(
+            gcode.encode(),
+            filename="Contour.nc"
+        ),
         caption="✅ G-код успешно создан."
-
     )
 
     await callback.answer()
