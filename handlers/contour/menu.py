@@ -17,7 +17,12 @@ def status(value):
 
 
 async def render_menu(state: FSMContext):
+
     data = await state.get_data()
+
+    print("========== FSM ==========")
+    print(data)
+    print("=========================")
 
     text = (
         "📐 <b>КОНТУР</b>\n\n"
