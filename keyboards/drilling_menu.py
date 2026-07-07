@@ -1,22 +1,26 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
-def milling_menu():
+def drilling_menu():
 
     return ReplyKeyboardMarkup(
 
         keyboard=[
 
             [
-                KeyboardButton(text="📐 Контур")
+                KeyboardButton(text="🕳 Сверление")
             ],
 
             [
-                KeyboardButton(text="📦 Карман")
+                KeyboardButton(text="🧵 Резьба")
             ],
 
             [
-                KeyboardButton(text="📏 Обводка")
+                KeyboardButton(text="🔩 Зенковка")
+            ],
+
+            [
+                KeyboardButton(text="🌀 Развертка")
             ],
 
             [
