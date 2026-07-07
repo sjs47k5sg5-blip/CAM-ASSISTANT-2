@@ -19,7 +19,6 @@ async def contour_start(
     await state.set_state(ContourWizard.menu)
 
     await state.update_data(
-
         size_x=None,
         size_y=None,
         size_z=None,
@@ -40,24 +39,19 @@ async def contour_start(
         corner_type="SHARP",
         corner_select="ALL",
         corner_value=0,
-
     )
 
     await message.answer(
-
-        "📐 <b>КОНТУР</b>\n\n"
+        "📐 <b>Контур</b>\n\n"
         "Введите параметры обработки.",
-
         parse_mode="HTML",
-
         reply_markup=contour_menu()
-
     )
 
 
-# =====================================================
-# ПОДКЛЮЧЕНИЕ ОБРАБОТЧИКОВ
-# =====================================================
+# -----------------------------------------
+# Подключаем внутренние роутеры
+# -----------------------------------------
 
 from .handlers import router as handlers_router
 from .generate import router as generate_router
