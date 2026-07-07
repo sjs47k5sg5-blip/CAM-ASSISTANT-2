@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 # ==========================================
@@ -62,24 +62,22 @@ class Workpiece:
 # ==========================================
 
 @dataclass
+
 class Corner:
 
     # SHARP / RADIUS / CHAMFER
+
     kind: str = "SHARP"
 
-    # Какие углы обрабатывать
-    positions: list[str] = field(
-        default_factory=lambda: [
-            "TL",
-            "TR",
-            "BL",
-            "BR",
-        ]
-    )
+    # Пока используем один параметр,
+
+    # совместимый с текущим CAM Engine
+
+    position: str = "ALL"
 
     # Радиус или фаска
-    value: float = 0.0
 
+    value: float = 0.0
 
 # ==========================================
 # FINISH

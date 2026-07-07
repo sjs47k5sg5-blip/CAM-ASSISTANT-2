@@ -43,12 +43,7 @@ class ProjectManager:
 
             corner=Corner(
                 kind="SHARP",
-                positions=[
-                    "TL",
-                    "TR",
-                    "BL",
-                    "BR",
-                ],
+                position="ALL",
                 value=0.0,
             ),
 

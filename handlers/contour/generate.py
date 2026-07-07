@@ -48,35 +48,22 @@ async def generate(
     # =====================================
 
     project.corner.kind = data.get(
-        "corner_type",
-        "SHARP",
+    "corner_type",
+    "SHARP",
+)
+
+project.corner.position = data.get(
+    "corner_select",
+    "ALL",
+)
+
+project.corner.value = float(
+    data.get(
+        "corner_value",
+        0.0,
     )
+)
 
-    corner = data.get("corner_select")
-
-    if corner is None:
-
-        project.corner.positions = [
-            "TL",
-            "TR",
-            "BL",
-            "BR",
-        ]
-
-    elif isinstance(corner, list):
-
-        project.corner.positions = corner
-
-    else:
-
-        project.corner.positions = [corner]
-
-    project.corner.value = float(
-        data.get(
-            "corner_value",
-            0.0,
-        )
-    )
 
     # =====================================
     # ЧИСТОВОЙ
