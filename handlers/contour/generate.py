@@ -77,6 +77,8 @@ project.corner.value = float(
         "corner_value",
         0.0,
     )
+)
+
 
 =====================================
     # ЧИСТОВОЙ
