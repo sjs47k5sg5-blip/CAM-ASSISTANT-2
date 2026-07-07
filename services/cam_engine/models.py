@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import List
 
 
 # ==========================================
@@ -57,6 +56,7 @@ class Workpiece:
 
     step_z: float = 2.0
 
+
 # ==========================================
 # CORNER
 # ==========================================
@@ -64,11 +64,21 @@ class Workpiece:
 @dataclass
 class Corner:
 
+    # SHARP / RADIUS / CHAMFER
     kind: str = "SHARP"
 
-    position: str = "ALL"
+    # Какие углы обрабатывать
+    positions: list[str] = field(
+        default_factory=lambda: [
+            "TL",
+            "TR",
+            "BL",
+            "BR",
+        ]
+    )
 
-    value: float = 0
+    # Радиус или фаска
+    value: float = 0.0
 
 
 # ==========================================
@@ -78,7 +88,7 @@ class Corner:
 @dataclass
 class Finish:
 
-    allowance: float = 0
+    allowance: float = 0.0
 
     enabled: bool = False
 
@@ -92,13 +102,13 @@ class Finish:
 @dataclass
 class Machining:
 
-    # Направление обработки
-    direction: str = "CLIMB"          # CLIMB / CONVENTIONAL
+    # CLIMB / CONVENTIONAL
+    direction: str = "CLIMB"
 
-    # Черновая обработка
+    # Черновая
     roughing: bool = False
 
-    # Боковой шаг (% от диаметра)
+    # Боковой шаг
     stepover: float = 0.6
 
     # Шаг по Z
@@ -114,10 +124,9 @@ class Compensation:
 
     enabled: bool = False
 
-    side: str = "LEFT"      # LEFT / RIGHT
+    side: str = "LEFT"
 
     d_number: int = 1
-
 
 
 # ==========================================
@@ -136,8 +145,6 @@ class Roughing:
     direction: str = "CLIMB"
 
 
-
-
 # ==========================================
 # MACHINE
 # ==========================================
@@ -149,9 +156,9 @@ class Machine:
 
     controller: str = "Fanuc Oi-MF"
 
-    safe_z: float = 100
+    safe_z: float = 100.0
 
-    rapid_z: float = 5
+    rapid_z: float = 5.0
 
     spindle_max: int = 15000
 
@@ -176,4 +183,3 @@ class Project:
     machining: Machining
 
     machine: Machine
-

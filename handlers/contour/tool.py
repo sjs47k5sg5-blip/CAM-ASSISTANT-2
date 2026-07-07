@@ -18,7 +18,7 @@ router = Router()
 @router.callback_query(F.data == "tool")
 async def tool_click(
     callback: CallbackQuery,
-    state: FSMContext
+    state: FSMContext,
 ):
 
     await state.set_state(ContourWizard.tool)
@@ -28,7 +28,7 @@ async def tool_click(
         "🔧 <b>Инструмент</b>\n\n"
         "Введите номер инструмента и диаметр.\n\n"
         "<code>3 10</code>\n\n"
-        "где\n"
+        "где:\n"
         "3 -- номер инструмента\n"
         "10 -- диаметр фрезы",
 
@@ -46,7 +46,7 @@ async def tool_click(
 @router.message(ContourWizard.tool)
 async def tool_input(
     message: Message,
-    state: FSMContext
+    state: FSMContext,
 ):
 
     try:
@@ -82,12 +82,13 @@ async def tool_input(
     await state.update_data(
 
         tool_number=tool,
-        tool_diameter=diameter
+        tool_diameter=diameter,
 
     )
 
+    # Возвращаемся в главное меню
     await state.set_state(
-        ContourWizard.step_z
+        ContourWizard.menu
     )
 
     await message.answer(
@@ -98,68 +99,7 @@ async def tool_input(
 
     )
 
-    await message.answer(
-
-        "📏 <b>Шаг по глубине</b>\n\n"
-        "Введите шаг по Z (мм).\n\n"
-        "Например:\n"
-        "<code>2</code>",
-
-        parse_mode="HTML"
-
-    )
-
-
-# ==========================================
-# ШАГ ПО ГЛУБИНЕ
-# ==========================================
-
-@router.message(ContourWizard.step_z)
-async def step_z_input(
-    message: Message,
-    state: FSMContext
-):
-
-    try:
-
-        step = float(
-            message.text.replace(",", ".")
-        )
-
-        if step <= 0:
-            raise ValueError
-
-    except ValueError:
-
-        await message.answer(
-
-            "❌ Неверное значение.\n\n"
-            "Введите положительное число.\n\n"
-            "Например:\n"
-            "<code>2</code>",
-
-            parse_mode="HTML"
-
-        )
-
-        return
-
-    await state.update_data(
-        step_z=step
-    )
-
-    await state.set_state(
-        ContourWizard.menu
-    )
-
-    await message.answer(
-
-        f"✅ Шаг по глубине сохранён\n\n"
-        f"{step} мм"
-
-    )
-
     await show_main_menu(
         message,
-        state
+        state,
     )
