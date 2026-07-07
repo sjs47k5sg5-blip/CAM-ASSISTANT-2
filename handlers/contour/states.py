@@ -27,4 +27,6 @@ class ContourWizard(StatesGroup):
 
     tool = State()
 
+    step_z = State()
+
     ready = State()

@@ -24,32 +24,26 @@ class FanucOiMFPost(BasePostProcessor):
 
         p = self.project
 
-        self.lines.append("%")
-        self.lines.append("O0001")
-        self.lines.append("")
-
-        self.lines.append("(CAM ASSISTANT)")
-        self.lines.append("")
-
-        self.lines.append("G21")
-        self.lines.append("G17")
-        self.lines.append("G90")
-        self.lines.append("G40")
-        self.lines.append("G49")
-        self.lines.append("G80")
-        self.lines.append("")
-
-        self.lines.append("G54")
-        self.lines.append("")
-
-        self.lines.append(f"T{p.tool.number} M6")
-        self.lines.append(f"S{p.tool.spindle} M3")
-        self.lines.append(
-            f"G43 H{p.tool.number} Z{p.machine.safe_z:.3f}"
-        )
-
-        self.lines.append("G0 Z5.000")
-        self.lines.append("")
+        self.lines.extend([
+            "%",
+            "O0001",
+            "",
+            "G21",
+            "G17",
+            "G90",
+            "G40",
+            "G49",
+            "G80",
+            "",
+            "G54",
+            "",
+            f"T{p.tool.number} M6",
+            f"S{p.tool.spindle} M3",
+            f"G43 H{p.tool.number} Z{p.machine.safe_z:.3f}",
+            "M8",
+            "",
+            f"G0 Z{p.machine.rapid_z:.3f}",
+        ])
 
     # =====================================
     # FOOTER
@@ -57,22 +51,19 @@ class FanucOiMFPost(BasePostProcessor):
 
     def footer(self):
 
-        p = self.project
-
-        self.lines.append("")
-        self.lines.append(f"G0 Z{p.machine.safe_z:.3f}")
-
-        self.lines.append("M5")
-
-        self.lines.append("")
-
-        self.lines.append("G53 G0 Z0")
-        self.lines.append("G53 G0 Y0")
-
-        self.lines.append("")
-
-        self.lines.append("M30")
-        self.lines.append("%")
+        self.lines.extend([
+            "",
+            f"G0 Z{self.project.machine.safe_z:.3f}",
+            "",
+            "M9",
+            "M5",
+            "",
+            "G53 G0 Z0",
+            "G53 G0 Y0",
+            "",
+            "M30",
+            "%"
+        ])
 
     # =====================================
     # RAPID
@@ -92,12 +83,22 @@ class FanucOiMFPost(BasePostProcessor):
 
         line = "G1 " + self.xyz(cmd)
 
-        if cmd.feed is not None:
+        if cmd.z is not None and cmd.x is None and cmd.y is None:
+
+            line += f" F{self.project.tool.plunge}"
+
+        elif cmd.feed is not None:
+
             line += f" F{cmd.feed:.0f}"
 
+        else:
+
+            line += f" F{self.project.tool.feed}"
+
         self.lines.append(line)
-         # =====================================
-    # G2
+
+    # =====================================
+    # ARC CW
     # =====================================
 
     def arc_cw(self, cmd):
@@ -111,12 +112,17 @@ class FanucOiMFPost(BasePostProcessor):
         )
 
         if cmd.feed is not None:
+
             line += f" F{cmd.feed:.0f}"
+
+        else:
+
+            line += f" F{self.project.tool.feed}"
 
         self.lines.append(line)
 
     # =====================================
-    # G3
+    # ARC CCW
     # =====================================
 
     def arc_ccw(self, cmd):
@@ -130,22 +136,23 @@ class FanucOiMFPost(BasePostProcessor):
         )
 
         if cmd.feed is not None:
+
             line += f" F{cmd.feed:.0f}"
+
+        else:
+
+            line += f" F{self.project.tool.feed}"
 
         self.lines.append(line)
 
     # =====================================
-    # TOOL CHANGE
+    # TOOL
     # =====================================
 
     def tool_change(self, cmd):
 
         self.lines.append(f"T{cmd.tool} M6")
-        self.lines.append(f"S{cmd.rpm} M3")
-        self.lines.append(
-            f"G43 H{cmd.length_offset} Z{self.project.machine.safe_z:.3f}"
-        )
-        self.lines.append("G0 Z5.000")
+        self.lines.append(f"G43 H{cmd.length_offset} Z{self.project.machine.safe_z:.3f}")
 
     # =====================================
     # SPINDLE

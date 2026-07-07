@@ -87,7 +87,7 @@ async def tool_input(
     )
 
     await state.set_state(
-        ContourWizard.menu
+        ContourWizard.step_z
     )
 
     await message.answer(
@@ -98,4 +98,68 @@ async def tool_input(
 
     )
 
-    await show_main_menu(message, state)
+    await message.answer(
+
+        "📏 <b>Шаг по глубине</b>\n\n"
+        "Введите шаг по Z (мм).\n\n"
+        "Например:\n"
+        "<code>2</code>",
+
+        parse_mode="HTML"
+
+    )
+
+
+# ==========================================
+# ШАГ ПО ГЛУБИНЕ
+# ==========================================
+
+@router.message(ContourWizard.step_z)
+async def step_z_input(
+    message: Message,
+    state: FSMContext
+):
+
+    try:
+
+        step = float(
+            message.text.replace(",", ".")
+        )
+
+        if step <= 0:
+            raise ValueError
+
+    except ValueError:
+
+        await message.answer(
+
+            "❌ Неверное значение.\n\n"
+            "Введите положительное число.\n\n"
+            "Например:\n"
+            "<code>2</code>",
+
+            parse_mode="HTML"
+
+        )
+
+        return
+
+    await state.update_data(
+        step_z=step
+    )
+
+    await state.set_state(
+        ContourWizard.menu
+    )
+
+    await message.answer(
+
+        f"✅ Шаг по глубине сохранён\n\n"
+        f"{step} мм"
+
+    )
+
+    await show_main_menu(
+        message,
+        state
+    )

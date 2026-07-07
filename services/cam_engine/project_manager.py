@@ -22,6 +22,7 @@ class ProjectManager:
                 z=0.0,
                 zero="CENTER",
                 zero_z="TOP",
+                step_z=2.0,
             ),
 
             tool=Tool(

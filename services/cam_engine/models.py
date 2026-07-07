@@ -55,6 +55,7 @@ class Workpiece:
 
     zero_z: str = "TOP"
 
+    step_z: float = 2.0
 
 # ==========================================
 # CORNER
@@ -120,3 +121,4 @@ class Project:
     finish: Finish
 
     machine: Machine
+

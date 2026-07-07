@@ -22,6 +22,7 @@ async def generate(callback: CallbackQuery, state: FSMContext):
 
     project.workpiece.zero = data.get("zero", "CENTER")
     project.workpiece.zero_z = data.get("zero_z", "TOP")
+    project.workpiece.step_z = data.get("step_z", 2.0)
 
     # Материал
     project.material.name = data.get("material", "Steel")

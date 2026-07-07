@@ -15,7 +15,6 @@ from services.cam_engine.toolpath import (
 class ContourOperation:
 
     def __init__(self, project: Project):
-
         self.project = project
 
     # =====================================
@@ -34,6 +33,11 @@ class ContourOperation:
 
         allowance = p.finish.allowance
 
+        step = p.workpiece.step_z
+
+        if step <= 0:
+            step = 2.0
+
         x -= allowance * 2
         y -= allowance * 2
 
@@ -45,38 +49,32 @@ class ContourOperation:
         if p.corner.kind == "SHARP":
 
             points = rectangle(
-
                 width=x,
                 height=y,
                 tool=tool,
-                zero=p.workpiece.zero
-
+                zero=p.workpiece.zero,
             )
 
         elif p.corner.kind == "RADIUS":
 
             points = radius_rectangle(
-
                 width=x,
                 height=y,
                 radius=p.corner.value,
                 tool=tool,
                 zero=p.workpiece.zero,
-                position=p.corner.position
-
+                position=p.corner.position,
             )
 
         elif p.corner.kind == "CHAMFER":
 
             points = chamfer_rectangle(
-
                 width=x,
                 height=y,
                 chamfer=p.corner.value,
                 tool=tool,
                 zero=p.workpiece.zero,
-                position=p.corner.position
-
+                position=p.corner.position,
             )
 
         else:
@@ -90,21 +88,15 @@ class ContourOperation:
         first = points[0]
 
         tp.add(
-
             Rapid(
-
                 x=first.x,
-                y=first.y
-
+                y=first.y,
             )
-
         )
 
-        current = 0
+        current = 0.0
 
-        step = 2
-
-        while current > -depth:
+        while True:
 
             current -= step
 
@@ -112,13 +104,9 @@ class ContourOperation:
                 current = -depth
 
             tp.add(
-
                 Feed(
-
                     z=current
-
                 )
-
             )
 
             for point in points[1:]:
@@ -126,31 +114,28 @@ class ContourOperation:
                 if hasattr(point, "radius"):
 
                     tp.add(
-
                         ArcCW(
-
                             x=point.x,
                             y=point.y,
                             i=point.i,
-                            j=point.j
-
+                            j=point.j,
                         )
-
                     )
 
                 else:
 
                     tp.add(
-
                         Feed(
-
                             x=point.x,
-                            y=point.y
-
+                            y=point.y,
                         )
-
                     )
 
+            if current <= -depth:
+                break
+
+        # ---------------------------------
+        # Чистовой проход
         # ---------------------------------
 
         if p.finish.enabled:
@@ -160,29 +145,21 @@ class ContourOperation:
                 if hasattr(point, "radius"):
 
                     tp.add(
-
                         ArcCW(
-
                             x=point.x,
                             y=point.y,
                             i=point.i,
-                            j=point.j
-
+                            j=point.j,
                         )
-
                     )
 
                 else:
 
                     tp.add(
-
                         Feed(
-
                             x=point.x,
-                            y=point.y
-
+                            y=point.y,
                         )
-
                     )
 
         return tp
