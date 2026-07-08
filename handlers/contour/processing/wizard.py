@@ -73,6 +73,10 @@ async def show_step(
     keyboard = []
     row = []
 
+    # =====================================
+    # CHOICE
+    # =====================================
+
     if step["type"] == "choice":
 
         for text, value in step["choices"]:
@@ -87,6 +91,14 @@ async def show_step(
             if len(row) == 2:
                 keyboard.append(row)
                 row = []
+
+        # <<< ЭТОГО НЕ ХВАТАЛО >>>
+        if row:
+            keyboard.append(row)
+
+    # =====================================
+    # NUMBER
+    # =====================================
 
     else:
 
