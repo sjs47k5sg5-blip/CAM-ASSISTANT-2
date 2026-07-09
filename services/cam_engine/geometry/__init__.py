@@ -6,6 +6,7 @@ from .line import Line
 from .arc import Arc
 from .circle import Circle
 from .rectangle import Rectangle
+from .contour import Contour
 
 from .transform import (
     translate_point,
@@ -31,6 +32,7 @@ __all__ = [
     "Arc",
     "Circle",
     "Rectangle",
+    "Contour",
     "translate_point",
     "rotate_point",
     "translate_points",
