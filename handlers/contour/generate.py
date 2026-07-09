@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 
 from services.cam_engine.engine import generate_contour
 from services.cam_engine.project_manager import ProjectManager
+from services.cam_engine.builders.rectangle_builder import RectangleBuilder
 
 router = Router()
 
@@ -17,6 +18,12 @@ async def generate(
     data = await state.get_data()
 
     project = ProjectManager.new_project()
+
+    project.contour = RectangleBuilder().build(
+        project.workpiece.x,
+        project.workpiece.y,
+        project.workpiece.zero,
+    )
 
     # =====================================
     # ЗАГОТОВКА
