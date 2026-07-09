@@ -2,26 +2,23 @@ from __future__ import annotations
 
 from .toolpath import ToolPath
 from .commands import RapidMove, LinearMove, ArcMove
-from ..geometry import Line, Arc, Contour
+from ..geometry import Line, Arc
 
 class ToolPathBuilder:
-    """
-    Converts geometry into machining commands.
-    """
-
-    def build_contour(self, contour: Contour, feed: float) -> ToolPath:
-        toolpath = ToolPath()
-
-        if len(contour) == 0:
-            return toolpath
-
-        toolpath.add(RapidMove(contour.start))
-
-        for entity in contour:
+    def build_contour(self, contour, feed):
+        path = ToolPath()
+        if contour is None:
+            return path
+        entities = list(contour)
+        if not entities:
+            return path
+        first = entities[0]
+        path.add(RapidMove(first.start))
+        for entity in entities:
             if isinstance(entity, Line):
-                toolpath.add(LinearMove(entity.end, feed))
+                path.add(LinearMove(entity.end, feed))
             elif isinstance(entity, Arc):
-                toolpath.add(
+                path.add(
                     ArcMove(
                         target=entity.end,
                         center=entity.center,
@@ -29,5 +26,4 @@ class ToolPathBuilder:
                         feed=feed,
                     )
                 )
-
-        return toolpath
+        return path
