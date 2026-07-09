@@ -4,6 +4,8 @@ from .toolpath.builder import ToolPathBuilder
 from .toolpath.passes import PassPlanner
 from .toolpath.lead_in import LeadIn
 from .toolpath.lead_out import LeadOut
+from .postprocessors.fanuc_oi_mf import FanucOiMFPost
+
 
 class CamEngine:
     """
@@ -19,6 +21,7 @@ class CamEngine:
     def build_contour(self, contour, feed, total_depth, step_down):
         toolpath = self.builder.build_contour(contour, feed)
         passes = self.pass_planner.build(total_depth, step_down)
+
         return {
             "toolpath": toolpath,
             "passes": passes,
@@ -26,10 +29,14 @@ class CamEngine:
             "lead_out": self.lead_out.build(contour.end),
         }
 
-
-from .postprocessors.fanuc_oi_mf import FanucOiMFPost
-
     def generate_gcode(self, contour, feed, total_depth, step_down):
-        result = self.build_contour(contour, feed, total_depth, step_down)
+        result = self.build_contour(
+            contour,
+            feed,
+            total_depth,
+            step_down,
+        )
+
         post = FanucOiMFPost()
+
         return post.generate(result["toolpath"])
