@@ -5,7 +5,7 @@ from .toolpath import ToolPath
 
 from .builder import ToolPathBuilder
 
-from .passes import PassPlanner, PassLevel
+from .passes import PassPlanner
 
 from .lead_in import LeadIn
 
