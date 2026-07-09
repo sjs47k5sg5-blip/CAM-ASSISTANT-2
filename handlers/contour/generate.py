@@ -20,9 +20,10 @@ async def generate(
     project = ProjectManager.new_project()
 
     project.contour = RectangleBuilder().build(
-        project.workpiece.x,
-        project.workpiece.y,
-        project.workpiece.zero,
+        data.get("size_x",0.0),
+        data.get("size_y",0.0),
+        data.get("zero","CENTER"),
+        radius=float(data.get("corner_value",0.0)),
     )
 
     # =====================================
