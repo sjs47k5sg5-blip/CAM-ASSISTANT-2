@@ -9,7 +9,7 @@ from .postprocessors.fanuc_oi_mf import FanucOiMFPost
 
 class CamEngine:
     """
-    First CAM engine pipeline.
+    CAM Engine
     """
 
     def __init__(self):
@@ -40,3 +40,26 @@ class CamEngine:
         post = FanucOiMFPost()
 
         return post.generate(result["toolpath"])
+
+
+def generate_contour(project):
+    """
+    Совместимость со старыми обработчиками Telegram-бота.
+    """
+
+    engine = CamEngine()
+
+    contour = getattr(project, "contour", None)
+    if contour is None:
+        raise ValueError("Контур проекта не задан")
+
+    feed = getattr(project.machining, "feed", 500.0)
+    total_depth = getattr(project.workpiece, "z", 0.0)
+    step_down = getattr(project.machining, "step_z", 1.0)
+
+    return engine.generate_gcode(
+        contour=contour,
+        feed=feed,
+        total_depth=total_depth,
+        step_down=step_down,
+    )
