@@ -6,6 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Document, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from services.cam_engine.project_geometry import parse_dxf, parse_manual_path
+from services.cam_engine.geometry_validation import build_rounded_polygon, validate_geometry
 from services.cam_engine.geometry_preview import render_geometry_preview
 from services.cam_engine.project_store import add_operation, create_project, get_project, list_projects, set_geometry
 
@@ -16,6 +17,7 @@ class ProjectWizard(StatesGroup):
     name = State()
     stock = State()
     manual_geometry = State()
+    rounded_polygon = State()
 
 
 def kb(rows):
@@ -33,7 +35,8 @@ def project_summary(project):
 
 def project_kb():
     return kb([
-        [("📐 DXF", "proj:dxf"), ("✍️ Контур вручную", "proj:manual")],
+        [("📐 DXF", "proj:dxf"), ("✍️ Линии/дуги", "proj:manual")],
+        [("🔘 Скруглённый контур", "proj:rounded")],
         [("👁 Предпросмотр", "proj:preview")],
         [("➕ Добавить контур", "proj:add:contour"), ("➕ Добавить карман", "proj:add:pocket")],
         [("📋 Операции", "proj:ops"), ("⬅ Проекты", "proj:list")],
@@ -119,6 +122,9 @@ async def preview_project(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Сначала задайте геометрию.", show_alert=True)
         return
     try:
+        issues = validate_geometry(project["geometry"])
+        if issues:
+            await callback.message.answer("Проверка геометрии:\\n" + "\\n".join("• " + item for item in issues))
         png = render_geometry_preview(project["geometry"])
     except (ValueError, KeyError, TypeError) as exc:
         await callback.answer(str(exc), show_alert=True)
@@ -129,6 +135,49 @@ async def preview_project(callback: CallbackQuery, state: FSMContext):
         caption="Предпросмотр геометрии. Это проверка чертежа, не симуляция обработки.",
     )
     await callback.answer()
+
+
+@router.callback_query(F.data == "proj:rounded")
+async def rounded_prompt(callback: CallbackQuery, state: FSMContext):
+    project = await active_project(callback, state)
+    if not project:
+        await callback.answer("Сначала откройте проект.", show_alert=True)
+        return
+    await state.set_state(ProjectWizard.rounded_polygon)
+    await callback.message.answer(
+        "<b>Контур с разными радиусами углов</b>\\n"
+        "Введите вершины по порядку, одна на строку: <code>X Y R</code>.\\n"
+        "R — радиус скругления этой вершины в мм; 0 — острый угол.\\n"
+        "Пример прямоугольника 80×40 с радиусами 5, 10, 2 и 0:\\n"
+        "<code>0 0 5\\n80 0 10\\n80 40 2\\n0 40 0</code>\\n"
+        "Пока поддерживаются выпуклые многоугольники."
+    )
+    await callback.answer()
+
+
+@router.message(ProjectWizard.rounded_polygon)
+async def rounded_input(message: Message, state: FSMContext):
+    data = await state.get_data()
+    project_id = data.get("active_project_id")
+    try:
+        vertices = []
+        for line in (message.text or "").splitlines():
+            if not line.strip():
+                continue
+            values = line.replace(",", ".").split()
+            if len(values) != 3:
+                raise ValueError("Каждая строка должна содержать X Y R.")
+            vertices.append(tuple(map(float, values)))
+        geometry = build_rounded_polygon(vertices)
+        set_geometry(project_id, message.from_user.id, geometry)
+    except (ValueError, TypeError) as exc:
+        await message.answer(f"Контур не сохранён: {exc}")
+        return
+    await state.set_state(None)
+    await message.answer(
+        f"Контур построен и проверен. Сегментов: {len(geometry['segments'])}.",
+        reply_markup=project_kb(),
+    )
 
 
 @router.callback_query(F.data == "proj:manual")
