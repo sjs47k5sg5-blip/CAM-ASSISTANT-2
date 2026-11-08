@@ -124,7 +124,7 @@ def build_pocket_program(data: dict) -> str:
 
     # Use a shallow linear ramp at each depth level. The required ramp length
     # is calculated for a maximum 5-degree ramp angle; reject undersized pockets.
-    first_level_drop = abs(levels[0])
+    first_level_drop = min(step_z, depth)
     ramp_required = first_level_drop / math.tan(math.radians(5.0))
     rough_width = rough_x1 - rough_x0
     rough_height = rough_y1 - rough_y0
@@ -159,7 +159,7 @@ def build_pocket_program(data: dict) -> str:
         if ramp_y < rough_y0 or ramp_y > rough_y1:
             raise ValueError("Не удалось построить безопасный линейный вход в карман.")
 
-    previous_level = 0.0
+    previous_level = depth if data["zero_z"] == "BOTTOM" else 0.0
     for index, z in enumerate(levels, 1):
         level_drop = abs(z - previous_level)
         if level_drop / math.tan(math.radians(5.0)) > ramp_length:
