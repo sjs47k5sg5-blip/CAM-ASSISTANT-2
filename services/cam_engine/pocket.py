@@ -126,8 +126,11 @@ def build_pocket_program(data: dict) -> str:
     # is calculated for a maximum 5-degree ramp angle; reject undersized pockets.
     first_level_drop = abs(levels[0])
     ramp_required = first_level_drop / math.tan(math.radians(5.0))
-    available_diagonal = math.hypot(rough_x1 - rough_x0, rough_y1 - rough_y0)
-    ramp_length = min(available_diagonal * 0.7, max(rough_x1 - rough_x0, rough_y1 - rough_y0))
+    rough_width = rough_x1 - rough_x0
+    rough_height = rough_y1 - rough_y0
+    ramp_axis = "X" if rough_width >= rough_height else "Y"
+    available_ramp = max(rough_width, rough_height)
+    ramp_length = available_ramp * 0.7
     if ramp_length < ramp_required:
         raise ValueError(
             "Карман мал для пологого линейного врезания при таком шаге Z. "
@@ -146,11 +149,15 @@ def build_pocket_program(data: dict) -> str:
     ]
 
     start_x, start_y = rough_points[0]
-    ramp_x, ramp_y = start_x + ramp_length, start_y
-    if ramp_x > rough_x1:
-        ramp_x = start_x - ramp_length
-    if ramp_x < rough_x0 or ramp_x > rough_x1:
-        raise ValueError("Не удалось построить безопасный линейный вход в карман.")
+    ramp_x, ramp_y = start_x, start_y
+    if ramp_axis == "X":
+        ramp_x = start_x + ramp_length if start_x + ramp_length <= rough_x1 else start_x - ramp_length
+        if ramp_x < rough_x0 or ramp_x > rough_x1:
+            raise ValueError("Не удалось построить безопасный линейный вход в карман.")
+    else:
+        ramp_y = start_y + ramp_length if start_y + ramp_length <= rough_y1 else start_y - ramp_length
+        if ramp_y < rough_y0 or ramp_y > rough_y1:
+            raise ValueError("Не удалось построить безопасный линейный вход в карман.")
 
     previous_level = 0.0
     for index, z in enumerate(levels, 1):
@@ -165,7 +172,7 @@ def build_pocket_program(data: dict) -> str:
             f"G00 Z{approach_z:.3f}",
             f"G00 X{start_x:.3f} Y{start_y:.3f}",
             f"G01 Z{0.000 if data['zero_z'] == 'TOP' else depth:.3f} F{feed:.1f}",
-            f"G01 X{ramp_x:.3f} Z{z:.3f} F{feed:.1f}",
+            f"G01 X{ramp_x:.3f} Y{ramp_y:.3f} Z{z:.3f} F{feed:.1f}",
         ])
         for px, py in rough_points[1:]:
             lines.append(f"G01 X{px:.3f} Y{py:.3f} F{feed:.1f}")
@@ -176,8 +183,9 @@ def build_pocket_program(data: dict) -> str:
     final_z = levels[-1]
     lines.extend([
         "(FINISH FLOOR)",
-        f"G00 X{finish_points[0][0]:.3f} Y{finish_points[0][1]:.3f}",
+        f"G00 X{rough_points[0][0]:.3f} Y{rough_points[0][1]:.3f}",
         f"G01 Z{final_z:.3f} F{feed:.1f}",
+        f"G01 X{finish_points[0][0]:.3f} Y{finish_points[0][1]:.3f} F{feed:.1f}",
     ])
     for px, py in finish_points[1:]:
         lines.append(f"G01 X{px:.3f} Y{py:.3f} F{feed:.1f}")
