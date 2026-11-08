@@ -170,7 +170,7 @@ def build_rounded_polygon(vertices: list[tuple[float, float, float]]) -> dict[st
         current = tangencies[i]
         following = tangencies[(i + 1) % len(points)]
         edge_length = _distance(points[i], points[(i + 1) % len(points)])
-        used = _distance(current[1], points[(i + 1) % len(points)]) + _distance(following[0], points[i])
+        used = _distance(points[i], current[1]) + _distance(points[(i + 1) % len(points)], following[0])
         if used > edge_length + 1e-7:
             raise ValueError(f"Скругления на ребре {i + 1} пересекаются: уменьшите радиусы.")
 
