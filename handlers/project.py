@@ -1,0 +1,190 @@
+from __future__ import annotations
+
+from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import CallbackQuery, Document, InlineKeyboardButton, InlineKeyboardMarkup, Message
+
+from services.cam_engine.project_geometry import parse_dxf, parse_manual_path
+from services.cam_engine.project_store import add_operation, create_project, get_project, list_projects, set_geometry
+
+router = Router()
+
+
+class ProjectWizard(StatesGroup):
+    name = State()
+    stock = State()
+    manual_geometry = State()
+
+
+def kb(rows):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=label, callback_data=data) for label, data in row]
+        for row in rows
+    ])
+
+
+def project_summary(project):
+    stock = project["stock"]
+    return (f"<b>🗂 {project['name']}</b>\nЗаготовка: {stock['x']:g} × {stock['y']:g} × {stock['z']:g} мм\n"
+            f"Геометрия: {'задана' if project['geometry'] else 'не задана'}\nОпераций: {len(project['operations'])}")
+
+
+def project_kb():
+    return kb([
+        [("📐 DXF", "proj:dxf"), ("✍️ Контур вручную", "proj:manual")],
+        [("➕ Добавить контур", "proj:add:contour"), ("➕ Добавить карман", "proj:add:pocket")],
+        [("📋 Операции", "proj:ops"), ("⬅ Проекты", "proj:list")],
+    ])
+
+
+@router.message(F.text == "🗂 Проект")
+async def project_menu(message: Message, state: FSMContext):
+    await state.clear()
+    projects = list_projects(message.from_user.id)
+    rows = [[(f"📁 {p['name']}", f"proj:open:{p['id']}")] for p in projects[:10]]
+    rows.append([("➕ Новый проект", "proj:new")])
+    await message.answer("Выберите проект или создайте новый:", reply_markup=kb(rows))
+
+
+@router.callback_query(F.data == "proj:new")
+async def new_project(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(ProjectWizard.name)
+    await callback.message.answer("Введите название проекта:")
+    await callback.answer()
+
+
+@router.message(ProjectWizard.name)
+async def project_name(message: Message, state: FSMContext):
+    name = (message.text or "").strip()
+    if not name or len(name) > 64:
+        await message.answer("Название: от 1 до 64 символов.")
+        return
+    await state.update_data(project_name=name)
+    await state.set_state(ProjectWizard.stock)
+    await message.answer("Введите размеры заготовки X Y Z в мм. Пример: <code>100 80 20</code>")
+
+
+@router.message(ProjectWizard.stock)
+async def project_stock(message: Message, state: FSMContext):
+    try:
+        x, y, z = map(float, (message.text or "").replace(",", ".").split())
+        if min(x, y, z) <= 0 or x > 1350 or y > 700 or z > 500:
+            raise ValueError
+        data = await state.get_data()
+        pid = create_project(data["project_name"], {"x": x, "y": y, "z": z}, message.from_user.id)
+    except (ValueError, TypeError, KeyError):
+        await message.answer("Введите X Y Z положительными числами в пределах станка.")
+        return
+    await state.update_data(active_project_id=pid)
+    await state.set_state(None)
+    await message.answer(project_summary(get_project(pid, message.from_user.id)), reply_markup=project_kb())
+
+
+@router.callback_query(F.data.startswith("proj:open:"))
+async def open_project(callback: CallbackQuery, state: FSMContext):
+    pid = int(callback.data.rsplit(":", 1)[1])
+    project = get_project(pid, callback.from_user.id)
+    if project is None:
+        await callback.answer("Проект не найден.", show_alert=True)
+        return
+    await state.clear()
+    await state.update_data(active_project_id=pid)
+    await callback.message.answer(project_summary(project), reply_markup=project_kb())
+    await callback.answer()
+
+
+@router.callback_query(F.data == "proj:list")
+async def project_list(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    projects = list_projects(callback.from_user.id)
+    rows = [[(f"📁 {p['name']}", f"proj:open:{p['id']}")] for p in projects[:10]]
+    rows.append([("➕ Новый проект", "proj:new")])
+    await callback.message.answer("Ваши проекты:", reply_markup=kb(rows))
+    await callback.answer()
+
+
+async def active_project(callback: CallbackQuery, state: FSMContext):
+    pid = (await state.get_data()).get("active_project_id")
+    return get_project(pid, callback.from_user.id) if pid else None
+
+
+@router.callback_query(F.data == "proj:manual")
+async def manual_prompt(callback: CallbackQuery, state: FSMContext):
+    project = await active_project(callback, state)
+    if not project:
+        await callback.answer("Сначала откройте проект.", show_alert=True)
+        return
+    await state.set_state(ProjectWizard.manual_geometry)
+    await callback.message.answer(
+        "<b>Построение контура</b>\n"
+        "<code>M 0 0</code> — начало; <code>L 50 0</code> — линия;\n"
+        "<code>A 50 20 0 10 CCW</code> — дуга (I/J от текущей точки); <code>Z</code> — замкнуть.\n"
+        "Одна команда на строку. Координаты в мм."
+    )
+    await callback.answer()
+
+
+@router.message(ProjectWizard.manual_geometry)
+async def manual_input(message: Message, state: FSMContext):
+    pid = (await state.get_data()).get("active_project_id")
+    try:
+        geometry = parse_manual_path(message.text or "")
+        set_geometry(pid, message.from_user.id, geometry)
+    except (ValueError, TypeError) as exc:
+        await message.answer(f"Ошибка контура: {exc}")
+        return
+    await state.set_state(None)
+    await message.answer(f"Контур сохранён. Сегментов: {len(geometry['segments'])}.", reply_markup=project_kb())
+
+
+@router.callback_query(F.data == "proj:dxf")
+async def dxf_prompt(callback: CallbackQuery, state: FSMContext):
+    project = await active_project(callback, state)
+    if not project:
+        await callback.answer("Сначала откройте проект.", show_alert=True)
+        return
+    await callback.message.answer("Отправьте DXF-файл документом. Поддерживаются LINE, ARC и полилинии.")
+    await callback.answer()
+
+
+@router.message(F.document)
+async def dxf_upload(message: Message, state: FSMContext):
+    pid = (await state.get_data()).get("active_project_id")
+    doc: Document = message.document
+    if not pid or not doc.file_name or not doc.file_name.lower().endswith(".dxf"):
+        return
+    from io import BytesIO
+    stream = BytesIO()
+    await message.bot.download(doc, destination=stream)
+    try:
+        geometry = parse_dxf(stream.getvalue())
+        set_geometry(pid, message.from_user.id, geometry)
+    except ValueError as exc:
+        await message.answer(str(exc))
+        return
+    await state.set_state(None)
+    await message.answer(f"DXF импортирован. Сегментов: {len(geometry['segments'])}. Единицы DXF нужно проверить.", reply_markup=project_kb())
+
+
+@router.callback_query(F.data.startswith("proj:add:"))
+async def add_project_operation(callback: CallbackQuery, state: FSMContext):
+    project = await active_project(callback, state)
+    if not project:
+        await callback.answer("Сначала откройте проект.", show_alert=True)
+        return
+    kind = callback.data.rsplit(":", 1)[1]
+    op_id = add_operation(project["id"], callback.from_user.id, {"type": kind, "status": "draft"})
+    await callback.message.answer(f"Операция #{op_id} добавлена как черновик. Настройки обработки подключаются следующим этапом.")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "proj:ops")
+async def operations_list(callback: CallbackQuery, state: FSMContext):
+    project = await active_project(callback, state)
+    if not project:
+        await callback.answer("Сначала откройте проект.", show_alert=True)
+        return
+    body = "\n".join(f"{o['id']}. {o['type']} — {o.get('status', 'draft')}" for o in project["operations"]) or "Операций пока нет."
+    await callback.message.answer("<b>Операции проекта</b>\n" + body)
+    await callback.answer()
