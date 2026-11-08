@@ -139,6 +139,8 @@ async def contour_set(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.message.answer("Введите радиус угла в мм, например <code>2</code>.")
     else:
         await state.update_data(**{field: value})
+        if field == "corner" and value == "SHARP":
+            await state.update_data(corner_r=0.0)
         await show_menu(callback, state)
 
 
@@ -146,7 +148,7 @@ async def contour_set(callback: CallbackQuery, state: FSMContext) -> None:
 async def input_size(message: Message, state: FSMContext) -> None:
     try:
         x, y, z = map(float, message.text.replace(",", ".").split())
-        if min(x, y, z) <= 0 or max(x, y, z) > 1350:
+        if x <= 0 or y <= 0 or z <= 0 or x > 1350 or y > 700 or z > 500:
             raise ValueError
     except (ValueError, AttributeError):
         await message.answer("Нужны три положительных размера в мм. Пример: <code>30 20 15</code>")
@@ -279,6 +281,8 @@ async def generate(callback: CallbackQuery, state: FSMContext) -> None:
         return
     try:
         levels = z_passes(data["z"], data["step_z"], data["zero_z"])
+        safe_z = 100.0 if data["zero_z"] == "TOP" else data["z"] + 100.0
+        approach_z = 5.0 if data["zero_z"] == "TOP" else data["z"] + 5.0
         lines = [
             "%",
             "O1001 (CAM ASSISTANT - VERIFY BEFORE USE)",
@@ -286,17 +290,17 @@ async def generate(callback: CallbackQuery, state: FSMContext) -> None:
             "G54",
             f"T{data['tool']} M6",
             f"S{data['rpm']} M3",
-            f"G43 H{data['tool']} Z100.000",
+            f"G43 H{data['tool']} Z{safe_z:.3f}",
             "M8",
         ]
         for z in levels:
-            lines.append("G00 Z5.000")
+            lines.append(f"G00 Z{approach_z:.3f}")
             lines.extend(rounded_rectangle_gcode(
                 data["x"], data["y"], data["tool_d"] / 2,
                 data.get("corner_r", 0.0) if data.get("corner") == "RADIUS" else 0.0,
                 data["zero"], z, data["feed"],
             ))
-        lines.extend(["G00 Z100.000", "M9", "M5", "G49", "G91 G28 Z0.", "G90", "M30", "%"])
+        lines.extend([f"G00 Z{safe_z:.3f}", "M9", "M5", "G49", "G91 G28 Z0.", "G90", "M30", "%"])
         program = "\n".join(lines) + "\n"
     except ValueError as exc:
         await callback.message.answer(f"Не удалось построить траекторию: {exc}")
