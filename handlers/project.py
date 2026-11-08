@@ -124,7 +124,7 @@ async def preview_project(callback: CallbackQuery, state: FSMContext):
     try:
         issues = validate_geometry(project["geometry"])
         if issues:
-            await callback.message.answer("Проверка геометрии:\\n" + "\\n".join("• " + item for item in issues))
+            await callback.message.answer("Проверка геометрии:\n" + "\n".join("• " + item for item in issues))
         png = render_geometry_preview(project["geometry"])
     except (ValueError, KeyError, TypeError) as exc:
         await callback.answer(str(exc), show_alert=True)
@@ -145,11 +145,11 @@ async def rounded_prompt(callback: CallbackQuery, state: FSMContext):
         return
     await state.set_state(ProjectWizard.rounded_polygon)
     await callback.message.answer(
-        "<b>Контур с разными радиусами углов</b>\\n"
-        "Введите вершины по порядку, одна на строку: <code>X Y R</code>.\\n"
-        "R — радиус скругления этой вершины в мм; 0 — острый угол.\\n"
-        "Пример прямоугольника 80×40 с радиусами 5, 10, 2 и 0:\\n"
-        "<code>0 0 5\\n80 0 10\\n80 40 2\\n0 40 0</code>\\n"
+        "<b>Контур с разными радиусами углов</b>\n"
+        "Введите вершины по порядку, одна на строку: <code>X Y R</code>.\n"
+        "R — радиус скругления этой вершины в мм; 0 — острый угол.\n"
+        "Пример прямоугольника 80×40 с радиусами 5, 10, 2 и 0:\n"
+        "<code>0 0 5\n80 0 10\n80 40 2\n0 40 0</code>\n"
         "Пока поддерживаются выпуклые многоугольники."
     )
     await callback.answer()
