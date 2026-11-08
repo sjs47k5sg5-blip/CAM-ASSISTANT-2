@@ -133,8 +133,13 @@ async def drilling_points(message: Message, state: FSMContext) -> None:
         lines.append(f"G99 G83 Z-{depth:.3f} R2.000 Q{q:.3f} F{data['drill_feed']:.1f}")
     else:
         lines.append(f"G99 G81 Z-{depth:.3f} R2.000 F{data['drill_feed']:.1f}")
+    cycle = (
+        f"G99 G83 Z-{depth:.3f} R2.000 Q{min(3.0, depth / 3):.3f} F{data['drill_feed']:.1f}"
+        if depth > 3 * d else
+        f"G99 G81 Z-{depth:.3f} R2.000 F{data['drill_feed']:.1f}"
+    )
     for x, y in points[1:]:
-        lines.append(f"G00 X{x:.3f} Y{y:.3f}")
+        lines.append(f"{cycle} X{x:.3f} Y{y:.3f}")
     lines.extend(make_footer())
     await state.clear()
     await message.answer_document(
@@ -186,7 +191,7 @@ async def thread_points(message: Message, state: FSMContext) -> None:
     lines.append(f"G00 X{points[0][0]:.3f} Y{points[0][1]:.3f}")
     lines.append(f"G99 G84 Z-{data['thread_depth']:.3f} R2.000 F{feed:.3f}")
     for x, y in points[1:]:
-        lines.append(f"G00 X{x:.3f} Y{y:.3f}")
+        lines.append(f"G99 G84 X{x:.3f} Y{y:.3f} Z-{data['thread_depth']:.3f} R2.000 F{feed:.3f}")
     lines.extend(make_footer())
     await state.clear()
     await message.answer_document(
