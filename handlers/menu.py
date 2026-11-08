@@ -21,7 +21,7 @@ class Calculator(StatesGroup):
 def main_menu() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📐 Контур")],
+            [KeyboardButton(text="📐 Контур"), KeyboardButton(text="🧱 Карман")],
             [KeyboardButton(text="🕳 Сверление"), KeyboardButton(text="🧵 Резьба")],
             [KeyboardButton(text="⚙ Режимы резания")],
             [KeyboardButton(text="📚 Справочник"), KeyboardButton(text="ℹ О программе")],
