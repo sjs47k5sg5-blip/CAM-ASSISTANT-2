@@ -62,6 +62,13 @@ class PocketTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_pocket_program(data)
 
+    def test_bottom_zero_uses_incremental_step_for_ramp(self):
+        data = self.sample()
+        data.update({"x": 40, "y": 30, "depth": 10, "step_z": 2, "zero_z": "BOTTOM"})
+        program = build_pocket_program(data)
+        self.assertIn("(ROUGH POCKET PASS 5)", program)
+        self.assertIn("G43 H4 Z110.000", program)
+
 
 if __name__ == "__main__":
     unittest.main()
