@@ -6,6 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Document, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from services.cam_engine.project_geometry import parse_dxf, parse_manual_path
+from services.cam_engine.geometry_preview import render_geometry_preview
 from services.cam_engine.project_store import add_operation, create_project, get_project, list_projects, set_geometry
 
 router = Router()
@@ -33,6 +34,7 @@ def project_summary(project):
 def project_kb():
     return kb([
         [("📐 DXF", "proj:dxf"), ("✍️ Контур вручную", "proj:manual")],
+        [("👁 Предпросмотр", "proj:preview")],
         [("➕ Добавить контур", "proj:add:contour"), ("➕ Добавить карман", "proj:add:pocket")],
         [("📋 Операции", "proj:ops"), ("⬅ Проекты", "proj:list")],
     ])
@@ -107,6 +109,26 @@ async def project_list(callback: CallbackQuery, state: FSMContext):
 async def active_project(callback: CallbackQuery, state: FSMContext):
     pid = (await state.get_data()).get("active_project_id")
     return get_project(pid, callback.from_user.id) if pid else None
+
+
+
+@router.callback_query(F.data == "proj:preview")
+async def preview_project(callback: CallbackQuery, state: FSMContext):
+    project = await active_project(callback, state)
+    if not project or not project.get("geometry"):
+        await callback.answer("Сначала задайте геометрию.", show_alert=True)
+        return
+    try:
+        png = render_geometry_preview(project["geometry"])
+    except (ValueError, KeyError, TypeError) as exc:
+        await callback.answer(str(exc), show_alert=True)
+        return
+    from aiogram.types import BufferedInputFile
+    await callback.message.answer_photo(
+        BufferedInputFile(png, filename="geometry_preview.png"),
+        caption="Предпросмотр геометрии. Это проверка чертежа, не симуляция обработки.",
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == "proj:manual")
