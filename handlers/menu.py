@@ -38,6 +38,8 @@ def parse_points(raw: str, expected: int) -> list[tuple[float, float]]:
         if len(values) != 2:
             raise ValueError("Каждая строка должна содержать X и Y.")
         x, y = map(float, values)
+        if not math.isfinite(x) or not math.isfinite(y):
+            raise ValueError("Координаты должны быть конечными числами.")
         if abs(x) > 1350 or abs(y) > 700:
             raise ValueError("Координата выходит за рабочий ход станка.")
         points.append((x, y))
@@ -101,9 +103,11 @@ async def drilling_start(message: Message, state: FSMContext) -> None:
 async def drilling_input(message: Message, state: FSMContext) -> None:
     try:
         d, depth, count, rpm, feed, tool = map(float, message.text.replace(",", ".").split())
+        if not all(math.isfinite(v) for v in (d, depth, count, rpm, feed, tool)):
+            raise ValueError
         if min(d, depth, count, rpm, feed, tool) <= 0 or not count.is_integer() or not tool.is_integer():
             raise ValueError
-        if count > 100 or tool > 30 or rpm > 15000 or feed > 15000:
+        if count > 100 or tool > 30 or rpm > 15000 or feed > 15000 or depth > 600 or d > 100:
             raise ValueError
     except (ValueError, AttributeError):
         await message.answer("Неверно. Пример: <code>8 20 4 1500 120 3</code>")
@@ -162,9 +166,11 @@ async def thread_start(message: Message, state: FSMContext) -> None:
 async def thread_input(message: Message, state: FSMContext) -> None:
     try:
         diameter, pitch, depth, rpm, tool = map(float, message.text.replace(",", ".").split())
+        if not all(math.isfinite(v) for v in (diameter, pitch, depth, rpm, tool)):
+            raise ValueError
         if min(diameter, pitch, depth, rpm, tool) <= 0 or not tool.is_integer():
             raise ValueError
-        if rpm > 15000 or tool > 30:
+        if rpm > 15000 or tool > 30 or depth > 600 or diameter > 100 or pitch > 10 or rpm * pitch > 15000:
             raise ValueError
     except (ValueError, AttributeError):
         await message.answer("Неверно. Пример: <code>10 1.5 15 500 4</code>")
@@ -214,6 +220,8 @@ async def cutting_start(message: Message, state: FSMContext) -> None:
 async def cutting_input(message: Message, state: FSMContext) -> None:
     try:
         diameter, teeth, vc, fz = map(float, message.text.replace(",", ".").split())
+        if not all(math.isfinite(v) for v in (diameter, teeth, vc, fz)):
+            raise ValueError
         if min(diameter, teeth, vc, fz) <= 0:
             raise ValueError
     except (ValueError, AttributeError):
@@ -221,6 +229,9 @@ async def cutting_input(message: Message, state: FSMContext) -> None:
         return
     rpm = min(15000, (1000 * vc) / (math.pi * diameter))
     feed = rpm * teeth * fz
+    if not math.isfinite(feed) or feed > 15000:
+        await message.answer("Расчётная подача превышает предел 15000 мм/мин. Уменьшите Vc или fz.")
+        return
     await state.clear()
     await message.answer(
         f"<b>Расчёт режимов</b>\nS ≈ <b>{rpm:.0f} об/мин</b>\nF ≈ <b>{feed:.0f} мм/мин</b>\n"
