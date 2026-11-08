@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import math
+from services.cam_engine.simple_contour import build_contour_program
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -217,101 +217,21 @@ async def input_feeds(message: Message, state: FSMContext) -> None:
     await show_menu(message, state)
 
 
-def z_passes(thickness: float, step: float, zero_z: str) -> list[float]:
-    count = math.ceil(thickness / step)
-    depths = [min(i * step, thickness) for i in range(1, count + 1)]
-    if zero_z == "TOP":
-        return [-round(d, 4) for d in depths]
-    return [round(thickness - d, 4) for d in depths]
-
-
-def rounded_rectangle_gcode(x: float, y: float, tool_r: float, corner_r: float,
-                            zero: str, z: float, feed: float) -> list[str]:
-    if zero == "CENTER":
-        x0, y0 = -x / 2, -y / 2
-    elif zero == "TL":
-        x0, y0 = 0.0, -y
-    elif zero == "TR":
-        x0, y0 = -x, -y
-    elif zero == "BR":
-        x0, y0 = -x, 0.0
-    else:
-        x0, y0 = 0.0, 0.0
-    x0 -= tool_r
-    y0 -= tool_r
-    x1, y1 = x0 + x + 2 * tool_r, y0 + y + 2 * tool_r
-    r = tool_r + corner_r
-    if r <= 0 or r >= min(x1 - x0, y1 - y0) / 2:
-        raise ValueError("Радиус траектории недопустим для выбранных размеров и фрезы.")
-    points = [
-        (x0 + r, y0), (x1 - r, y0),
-        (x1, y0 + r), (x1, y1 - r),
-        (x1 - r, y1), (x0 + r, y1),
-        (x0, y1 - r), (x0, y0 + r),
-        (x0 + r, y0),
-    ]
-    lines = [f"G00 X{points[0][0]:.3f} Y{points[0][1]:.3f}", f"G01 Z{z:.3f} F{feed:.1f}"]
-    centers = [
-        (x1 - r, y0 + r), (x1 - r, y1 - r),
-        (x0 + r, y1 - r), (x0 + r, y0 + r),
-    ]
-    for i in range(4):
-        end = points[2 * i + 2]
-        start = points[2 * i + 1]
-        lines.append(f"G01 X{start[0]:.3f} Y{start[1]:.3f} F{feed:.1f}")
-        cx, cy = centers[i]
-        lines.append(
-            f"G03 X{end[0]:.3f} Y{end[1]:.3f} I{cx-start[0]:.3f} J{cy-start[1]:.3f} F{feed:.1f}"
-        )
-        if i < 3:
-            nxt = points[2 * i + 3]
-            lines.append(f"G01 X{nxt[0]:.3f} Y{nxt[1]:.3f} F{feed:.1f}")
-    return lines
-
-
 async def generate(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
-    required = ("x", "y", "z", "tool", "tool_d", "zero", "zero_z", "rpm", "feed", "step_z")
-    missing = [key for key in required if data.get(key) is None]
-    if missing:
-        await callback.answer("Заполните все параметры.", show_alert=True)
-        return
-    if data["tool_d"] >= min(data["x"], data["y"]):
-        await callback.answer("Диаметр фрезы слишком велик для детали.", show_alert=True)
-        return
     try:
-        levels = z_passes(data["z"], data["step_z"], data["zero_z"])
-        safe_z = 100.0 if data["zero_z"] == "TOP" else data["z"] + 100.0
-        approach_z = 5.0 if data["zero_z"] == "TOP" else data["z"] + 5.0
-        lines = [
-            "%",
-            "O1001 (CAM ASSISTANT - VERIFY BEFORE USE)",
-            "G21 G17 G90 G40 G49 G80",
-            "G54",
-            f"T{data['tool']} M6",
-            f"S{data['rpm']} M3",
-            f"G43 H{data['tool']} Z{safe_z:.3f}",
-            "M8",
-        ]
-        for z in levels:
-            lines.append(f"G00 Z{approach_z:.3f}")
-            lines.extend(rounded_rectangle_gcode(
-                data["x"], data["y"], data["tool_d"] / 2,
-                data.get("corner_r", 0.0) if data.get("corner") == "RADIUS" else 0.0,
-                data["zero"], z, data["feed"],
-            ))
-        lines.extend([f"G00 Z{safe_z:.3f}", "M9", "M5", "G49", "G91 G28 Z0.", "G90", "M30", "%"])
-        program = "\n".join(lines) + "\n"
-    except ValueError as exc:
-        await callback.message.answer(f"Не удалось построить траекторию: {exc}")
-        await callback.answer()
+        program = build_contour_program(data)
+    except (ValueError, TypeError, KeyError) as exc:
+        await callback.answer(str(exc)[:180], show_alert=True)
         return
-    filename = "contour_fanuc.nc"
+
     await callback.message.answer_document(
-        BufferedInputFile(program.encode("utf-8"), filename=filename),
+        BufferedInputFile(program.encode("utf-8"), filename="contour_fanuc.nc"),
         caption=(
-            "Файл создан. Это черновая УП: проверьте систему координат, Z0, вылет инструмента, "
-            "коррекцию длины, безопасные высоты и траекторию в симуляторе. Не запускайте без проверки."
+            "Черновая УП создана. Проверьте геометрию, ноль XY/Z, корректор H, "
+            "вылет, крепление заготовки и пределы перемещений в симуляторе. "
+            "Подача по Z вертикальная; перед станком подтвердите допустимость врезания "
+            "для выбранного инструмента и материала."
         ),
     )
     await callback.answer("G-код сформирован.")
