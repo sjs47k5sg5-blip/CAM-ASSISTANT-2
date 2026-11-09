@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -9,6 +11,7 @@ from services.cam_engine.project_geometry import parse_dxf, parse_manual_path
 from services.cam_engine.geometry_validation import build_rounded_polygon, validate_geometry
 from services.cam_engine.geometry_preview import render_geometry_preview
 from services.cam_engine.geometry_offset import offset_geometry
+from services.cam_engine.profile_toolpath import build_profile_toolpath, render_toolpath_preview
 from services.cam_engine.project_store import add_operation, create_project, get_project, list_projects, set_geometry
 
 router = Router()
@@ -20,6 +23,7 @@ class ProjectWizard(StatesGroup):
     manual_geometry = State()
     rounded_polygon = State()
     offset_tool = State()
+    profile_toolpath = State()
 
 
 def kb(rows):
@@ -41,6 +45,7 @@ def project_kb():
         [("🔘 Скруглённый контур", "proj:rounded")],
         [("👁 Предпросмотр", "proj:preview")],
         [("🧰 Проверить смещение фрезы", "proj:offset")],
+        [("🛤 Траектория контура", "proj:toolpath")],
         [("➕ Добавить контур", "proj:add:contour"), ("➕ Добавить карман", "proj:add:pocket")],
         [("📋 Операции", "proj:ops"), ("⬅ Проекты", "proj:list")],
     ])
@@ -186,6 +191,62 @@ async def offset_input(message: Message, state: FSMContext):
         BufferedInputFile(png, filename="cutter_offset_preview.png"),
         caption=f"Предпросмотр смещения на R{diameter / 2:g} мм ({parts[1].upper()}). "
                 "Это аппроксимация контура, не проверенная траектория и не УП.",
+        reply_markup=project_kb(),
+    )
+
+
+
+@router.callback_query(F.data == "proj:toolpath")
+async def toolpath_prompt(callback: CallbackQuery, state: FSMContext):
+    project = await active_project(callback, state)
+    if not project or not project.get("geometry"):
+        await callback.answer("Сначала задайте геометрию.", show_alert=True)
+        return
+    if not project["geometry"].get("closed"):
+        await callback.answer("Нужен замкнутый контур.", show_alert=True)
+        return
+    await state.set_state(ProjectWizard.profile_toolpath)
+    await callback.message.answer(
+        "<b>Предпросмотр траектории контура</b>\\n"
+        "Введите: <code>D глубина шаг_Z OUTSIDE|INSIDE [припуск]</code>\\n"
+        "Пример: <code>10 12 3 OUTSIDE 0.2</code>\\n"
+        "D — диаметр фрезы, размеры в мм. Припуск необязателен. "
+        "Будет построена геометрия проходов по уровням Z, без УП."
+    )
+    await callback.answer()
+
+
+@router.message(ProjectWizard.profile_toolpath)
+async def toolpath_input(message: Message, state: FSMContext):
+    data = await state.get_data()
+    project_id = data.get("active_project_id")
+    project = get_project(project_id, message.from_user.id) if project_id else None
+    try:
+        values = (message.text or "").replace(",", ".").split()
+        if len(values) not in {4, 5}:
+            raise ValueError("Формат: D глубина шаг_Z OUTSIDE|INSIDE [припуск].")
+        diameter, depth, stepdown = map(float, values[:3])
+        side = values[3].upper()
+        allowance = float(values[4]) if len(values) == 5 else 0.0
+        if not project or not project.get("geometry"):
+            raise ValueError("Проект или геометрия не найдены.")
+        toolpath = build_profile_toolpath(
+            project["geometry"], diameter, depth, stepdown, side, allowance
+        )
+        png = render_toolpath_preview(toolpath)
+    except (ValueError, TypeError, KeyError) as exc:
+        await message.answer(f"Траектория не построена: {exc}")
+        return
+    from aiogram.types import BufferedInputFile
+    await state.set_state(None)
+    await message.answer_photo(
+        BufferedInputFile(png, filename="profile_toolpath_preview.png"),
+        caption=(
+            f"Предпросмотр: {toolpath['path_count']} проходов, "
+            f"{len(toolpath['z_levels'])} уровней Z, длина геометрии "
+            f"{toolpath['estimated_cut_length_mm']:.1f} мм.\\n"
+            "Это только геометрия центра фрезы. Нет врезания, отводов, проверки коллизий и G-кода."
+        ),
         reply_markup=project_kb(),
     )
 
