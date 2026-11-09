@@ -23,7 +23,11 @@ class ProjectWizard(StatesGroup):
     manual_geometry = State()
     rounded_polygon = State()
     offset_tool = State()
-    profile_toolpath = State()
+    profile_diameter = State()
+    profile_depth = State()
+    profile_stepdown = State()
+    profile_side = State()
+    profile_allowance = State()
 
 
 def kb(rows):
@@ -205,46 +209,143 @@ async def toolpath_prompt(callback: CallbackQuery, state: FSMContext):
     if not project["geometry"].get("closed"):
         await callback.answer("Нужен замкнутый контур.", show_alert=True)
         return
-    await state.set_state(ProjectWizard.profile_toolpath)
+    await state.set_state(ProjectWizard.profile_diameter)
+    await state.update_data(toolpath_values={})
     await callback.message.answer(
-        "<b>Предпросмотр траектории контура</b>\\n"
-        "Введите: <code>D глубина шаг_Z OUTSIDE|INSIDE [припуск]</code>\\n"
-        "Пример: <code>10 12 3 OUTSIDE 0.2</code>\\n"
-        "D — диаметр фрезы, размеры в мм. Припуск необязателен. "
-        "Будет построена геометрия проходов по уровням Z, без УП."
+        "<b>Шаг 1 из 5. Диаметр фрезы</b>\n"
+        "Укажите диаметр режущей части инструмента в миллиметрах. "
+        "Например, если фреза Ø10 мм, отправьте <code>10</code>.\n"
+        "Введите только число."
     )
     await callback.answer()
 
 
-@router.message(ProjectWizard.profile_toolpath)
-async def toolpath_input(message: Message, state: FSMContext):
-    data = await state.get_data()
-    project_id = data.get("active_project_id")
-    project = get_project(project_id, message.from_user.id) if project_id else None
+@router.message(ProjectWizard.profile_diameter)
+async def toolpath_diameter(message: Message, state: FSMContext):
     try:
-        values = (message.text or "").replace(",", ".").split()
-        if len(values) not in {4, 5}:
-            raise ValueError("Формат: D глубина шаг_Z OUTSIDE|INSIDE [припуск].")
-        diameter, depth, stepdown = map(float, values[:3])
-        side = values[3].upper()
-        allowance = float(values[4]) if len(values) == 5 else 0.0
+        value = float((message.text or "").strip().replace(",", "."))
+        if not math.isfinite(value) or not 0.1 <= value <= 100:
+            raise ValueError
+    except ValueError:
+        await message.answer("Не понял диаметр. Введите число от 0.1 до 100 мм. Например: <code>10</code>.")
+        return
+    await state.update_data(toolpath_diameter=value)
+    await state.set_state(ProjectWizard.profile_depth)
+    await message.answer(
+        "<b>Шаг 2 из 5. Глубина обработки</b>\n"
+        "На какую глубину нужно обработать контур от верхней поверхности детали? "
+        "Введите значение в мм. Например: <code>12</code>."
+    )
+
+
+@router.message(ProjectWizard.profile_depth)
+async def toolpath_depth(message: Message, state: FSMContext):
+    try:
+        value = float((message.text or "").strip().replace(",", "."))
+        if not math.isfinite(value) or not 0 < value <= 500:
+            raise ValueError
+    except ValueError:
+        await message.answer("Глубина должна быть больше 0 и не более 500 мм. Например: <code>12</code>.")
+        return
+    await state.update_data(toolpath_depth=value)
+    await state.set_state(ProjectWizard.profile_stepdown)
+    await message.answer(
+        "<b>Шаг 3 из 5. Глубина одного прохода по Z</b>\n"
+        "Это сколько миллиметров фреза опускается за один проход. "
+        "Например, при общей глубине 12 мм и шаге 3 мм получится 4 уровня: "
+        "3, 6, 9 и 12 мм.\nВведите шаг от 0.01 до 10 мм. Пример: <code>3</code>."
+    )
+
+
+@router.message(ProjectWizard.profile_stepdown)
+async def toolpath_stepdown(message: Message, state: FSMContext):
+    try:
+        value = float((message.text or "").strip().replace(",", "."))
+        if not math.isfinite(value) or not 0 < value <= 10:
+            raise ValueError
+    except ValueError:
+        await message.answer("Шаг по Z должен быть больше 0 и не более 10 мм. Например: <code>3</code>.")
+        return
+    await state.update_data(toolpath_stepdown=value)
+    await state.set_state(ProjectWizard.profile_side)
+    await message.answer(
+        "<b>Шаг 4 из 5. С какой стороны вести фрезу?</b>\n"
+        "Выберите вариант:\n"
+        "• <b>Снаружи</b> — обработка внешнего контура детали.\n"
+        "• <b>Изнутри</b> — обработка внутреннего контура/кармана.",
+        reply_markup=kb([[("Снаружи", "proj:toolpath:side:OUTSIDE"),
+                          ("Изнутри", "proj:toolpath:side:INSIDE")],
+                         [("Отмена", "proj:toolpath:cancel")]])
+    )
+
+
+@router.callback_query(F.data.startswith("proj:toolpath:side:"))
+async def toolpath_side(callback: CallbackQuery, state: FSMContext):
+    side = callback.data.rsplit(":", 1)[1]
+    if side not in {"OUTSIDE", "INSIDE"}:
+        await callback.answer("Неизвестный вариант.", show_alert=True)
+        return
+    await state.update_data(toolpath_side=side)
+    await state.set_state(ProjectWizard.profile_allowance)
+    await callback.message.answer(
+        "<b>Шаг 5 из 5. Припуск на чистовую обработку</b>\n"
+        "Припуск — это небольшой слой материала, который оставляют для последующего чистового прохода. "
+        "Если чистовой проход пока не планируете, введите <code>0</code>.\n"
+        "Допустимо от 0 до 5 мм. Пример: <code>0.2</code>."
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "proj:toolpath:cancel")
+async def toolpath_cancel(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(None)
+    await callback.message.answer("Построение траектории отменено.", reply_markup=project_kb())
+    await callback.answer()
+
+
+@router.message(ProjectWizard.profile_allowance)
+async def toolpath_allowance(message: Message, state: FSMContext):
+    try:
+        allowance = float((message.text or "").strip().replace(",", "."))
+        if not math.isfinite(allowance) or not 0 <= allowance <= 5:
+            raise ValueError
+        data = await state.get_data()
+        project_id = data.get("active_project_id")
+        project = get_project(project_id, message.from_user.id) if project_id else None
         if not project or not project.get("geometry"):
             raise ValueError("Проект или геометрия не найдены.")
+        diameter = data["toolpath_diameter"]
+        depth = data["toolpath_depth"]
+        stepdown = data["toolpath_stepdown"]
+        side = data["toolpath_side"]
         toolpath = build_profile_toolpath(
             project["geometry"], diameter, depth, stepdown, side, allowance
         )
         png = render_toolpath_preview(toolpath)
     except (ValueError, TypeError, KeyError) as exc:
-        await message.answer(f"Траектория не построена: {exc}")
+        await message.answer(
+            f"Не удалось построить предпросмотр: {exc}\n"
+            "Проверьте значение и введите припуск ещё раз (от 0 до 5 мм). "
+            "Если чистовой проход не нужен, отправьте <code>0</code>."
+        )
         return
-    from aiogram.types import BufferedInputFile
     await state.set_state(None)
+    await message.answer(
+        "<b>Параметры приняты</b>\n"
+        f"Фреза: Ø{diameter:g} мм\n"
+        f"Глубина: {depth:g} мм\n"
+        f"Шаг по Z: {stepdown:g} мм\n"
+        f"Сторона: {'снаружи' if side == 'OUTSIDE' else 'изнутри'}\n"
+        f"Припуск: {allowance:g} мм\n\n"
+        "Строю геометрический предпросмотр..."
+    )
+    from aiogram.types import BufferedInputFile
     await message.answer_photo(
         BufferedInputFile(png, filename="profile_toolpath_preview.png"),
         caption=(
             f"Предпросмотр: {toolpath['path_count']} проходов, "
             f"{len(toolpath['z_levels'])} уровней Z, длина геометрии "
-            f"{toolpath['estimated_cut_length_mm']:.1f} мм.\\n"
+            f"{toolpath['estimated_cut_length_mm']:.1f} мм.\n"
             "Это только геометрия центра фрезы. Нет врезания, отводов, проверки коллизий и G-кода."
         ),
         reply_markup=project_kb(),
