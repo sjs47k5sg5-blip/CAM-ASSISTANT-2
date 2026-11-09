@@ -60,9 +60,7 @@ def flatten_geometry(geometry: dict[str, Any], tolerance: float = 0.02) -> list[
             raise ValueError("Поддерживаются только линии и дуги.")
         if previous_end is not None and math.dist(previous_end, part[0]) > max(tolerance, 0.02):
             raise ValueError("В контуре есть разрыв между сегментами.")
-        if not points:
-            points.append(part[0])
-        points.extend(part[1:-1])
+        points.extend(part[:-1])
         previous_end = part[-1]
     if len(points) < 3:
         raise ValueError("Недостаточно точек для замкнутого контура.")
