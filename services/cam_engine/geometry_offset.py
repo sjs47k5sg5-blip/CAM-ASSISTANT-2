@@ -50,6 +50,7 @@ def flatten_geometry(geometry: dict[str, Any], tolerance: float = 0.02) -> list[
     if issues:
         raise ValueError("Контур не прошёл проверку: " + "; ".join(issues))
     points: list[Point] = []
+    previous_end: Point | None = None
     for segment in geometry.get("segments", []):
         if segment.get("type") == "line":
             part = [tuple(map(float, segment["start"])), tuple(map(float, segment["end"]))]
@@ -57,13 +58,16 @@ def flatten_geometry(geometry: dict[str, Any], tolerance: float = 0.02) -> list[
             part = _arc_points(segment, tolerance)
         else:
             raise ValueError("Поддерживаются только линии и дуги.")
-        if points and math.dist(points[-1], part[0]) > max(tolerance, 0.02):
+        if previous_end is not None and math.dist(previous_end, part[0]) > max(tolerance, 0.02):
             raise ValueError("В контуре есть разрыв между сегментами.")
-        points.extend(part[:-1])
+        if not points:
+            points.append(part[0])
+        points.extend(part[1:-1])
+        previous_end = part[-1]
     if len(points) < 3:
         raise ValueError("Недостаточно точек для замкнутого контура.")
-    final_end = tuple(map(float, geometry["segments"][-1]["end"]))
-    if math.dist(points[0], final_end) > max(tolerance, 0.02):
+    first_start = tuple(map(float, geometry["segments"][0]["start"]))
+    if previous_end is None or math.dist(first_start, previous_end) > max(tolerance, 0.02):
         raise ValueError("Последний сегмент не замыкает контур.")
     return points
 
