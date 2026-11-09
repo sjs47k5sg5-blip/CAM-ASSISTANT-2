@@ -62,9 +62,8 @@ def flatten_geometry(geometry: dict[str, Any], tolerance: float = 0.02) -> list[
         points.extend(part[:-1])
     if len(points) < 3:
         raise ValueError("Недостаточно точек для замкнутого контура.")
-    if math.dist(points[0], points[-1]) <= max(tolerance, 0.02):
-        points.pop()
-    else:
+    final_end = tuple(map(float, geometry["segments"][-1]["end"]))
+    if math.dist(points[0], final_end) > max(tolerance, 0.02):
         raise ValueError("Последний сегмент не замыкает контур.")
     return points
 
