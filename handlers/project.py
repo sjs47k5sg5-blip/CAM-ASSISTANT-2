@@ -8,6 +8,7 @@ from aiogram.types import CallbackQuery, Document, InlineKeyboardButton, InlineK
 from services.cam_engine.project_geometry import parse_dxf, parse_manual_path
 from services.cam_engine.geometry_validation import build_rounded_polygon, validate_geometry
 from services.cam_engine.geometry_preview import render_geometry_preview
+from services.cam_engine.geometry_offset import offset_geometry
 from services.cam_engine.project_store import add_operation, create_project, get_project, list_projects, set_geometry
 
 router = Router()
@@ -18,6 +19,7 @@ class ProjectWizard(StatesGroup):
     stock = State()
     manual_geometry = State()
     rounded_polygon = State()
+    offset_tool = State()
 
 
 def kb(rows):
@@ -38,6 +40,7 @@ def project_kb():
         [("📐 DXF", "proj:dxf"), ("✍️ Линии/дуги", "proj:manual")],
         [("🔘 Скруглённый контур", "proj:rounded")],
         [("👁 Предпросмотр", "proj:preview")],
+        [("🧰 Проверить смещение фрезы", "proj:offset")],
         [("➕ Добавить контур", "proj:add:contour"), ("➕ Добавить карман", "proj:add:pocket")],
         [("📋 Операции", "proj:ops"), ("⬅ Проекты", "proj:list")],
     ])
@@ -135,6 +138,56 @@ async def preview_project(callback: CallbackQuery, state: FSMContext):
         caption="Предпросмотр геометрии. Это проверка чертежа, не симуляция обработки.",
     )
     await callback.answer()
+
+
+
+@router.callback_query(F.data == "proj:offset")
+async def offset_prompt(callback: CallbackQuery, state: FSMContext):
+    project = await active_project(callback, state)
+    if not project or not project.get("geometry"):
+        await callback.answer("Сначала задайте геометрию.", show_alert=True)
+        return
+    if not project["geometry"].get("closed"):
+        await callback.answer("Для смещения нужен замкнутый контур.", show_alert=True)
+        return
+    await state.set_state(ProjectWizard.offset_tool)
+    await callback.message.answer(
+        "Введите диаметр фрезы и сторону смещения: <code>D OUTSIDE</code> или <code>D INSIDE</code>.\\n"
+        "Пример: <code>10 OUTSIDE</code>. Смещение рассчитывается на радиус фрезы. "
+        "Результат будет только предпросмотром, без генерации УП."
+    )
+    await callback.answer()
+
+
+@router.message(ProjectWizard.offset_tool)
+async def offset_input(message: Message, state: FSMContext):
+    data = await state.get_data()
+    project_id = data.get("active_project_id")
+    project = get_project(project_id, message.from_user.id) if project_id else None
+    try:
+        parts = (message.text or "").replace(",", ".").split()
+        if len(parts) != 2:
+            raise ValueError("Формат: D OUTSIDE или D INSIDE.")
+        diameter = float(parts[0])
+        if not math.isfinite(diameter) or diameter <= 0:
+            raise ValueError("Диаметр должен быть положительным числом.")
+        if parts[1].upper() not in {"OUTSIDE", "INSIDE"}:
+            raise ValueError("Сторона: OUTSIDE или INSIDE.")
+        if not project or not project.get("geometry"):
+            raise ValueError("Проект или геометрия не найдены.")
+        shifted = offset_geometry(project["geometry"], diameter / 2, parts[1])
+        png = render_geometry_preview(shifted)
+    except (ValueError, TypeError, KeyError) as exc:
+        await message.answer(f"Смещение не построено: {exc}")
+        return
+    from aiogram.types import BufferedInputFile
+    await state.set_state(None)
+    await message.answer_photo(
+        BufferedInputFile(png, filename="cutter_offset_preview.png"),
+        caption=f"Предпросмотр смещения на R{diameter / 2:g} мм ({parts[1].upper()}). "
+                "Это аппроксимация контура, не проверенная траектория и не УП.",
+        reply_markup=project_kb(),
+    )
 
 
 @router.callback_query(F.data == "proj:rounded")
